@@ -364,9 +364,8 @@ const allDates = orders
                 </select>
               </Box>
               {/* Kafelki/statystyki korzystają z filteredOrdersByRange */}
-              <Grid container spacing={3} mb={2} justifyContent="center">
-                {/* Rząd 1 */}
-                <Grid item xs={12} sm={6} md={6} lg={6}>
+              <Box display="flex" flexWrap="wrap" gap={3} mb={2} justifyContent="center">
+                <Box sx={{ width: 350, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#e3f2fd', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <ShoppingCartIcon sx={{ fontSize: 40, color: '#1976d2' }} />
@@ -376,8 +375,8 @@ const allDates = orders
                       <Typography variant="h4" fontWeight={700}>{filteredOrdersByRange.length}</Typography>
                     </Box>
                   </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={6} lg={6}>
+                </Box>
+                <Box sx={{ width: 350, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#e8f5e9', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <AttachMoneyIcon sx={{ fontSize: 40, color: '#388e3c' }} />
@@ -387,9 +386,8 @@ const allDates = orders
                       <Typography variant="h4" fontWeight={700}>{totalObrot.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Grid>
-                {/* Rząd 2 */}
-                <Grid item xs={12} sm={6} md={6} lg={6}>
+                </Box>
+                <Box sx={{ width: 350, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#e8f5e9', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <AttachMoneyIcon sx={{ fontSize: 40, color: '#388e3c' }} />
@@ -399,8 +397,8 @@ const allDates = orders
                       <Typography variant="h4" fontWeight={700}>{sumProducts.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={6} lg={6}>
+                </Box>
+                <Box sx={{ width: 350, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#fff3e0', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <LocalShippingIcon sx={{ fontSize: 40, color: '#f57c00' }} />
@@ -410,9 +408,8 @@ const allDates = orders
                       <Typography variant="h4" fontWeight={700}>{sumDelivery.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Grid>
-                {/* Rząd 3 */}
-                <Grid item xs={12} sm={6} md={6} lg={6}>
+                </Box>
+                <Box sx={{ width: 350, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#f3e5f5', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <BarChartIcon sx={{ fontSize: 40, color: '#8e24aa' }} />
@@ -422,8 +419,8 @@ const allDates = orders
                       <Typography variant="h4" fontWeight={700}>{avgOrder.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Grid>
-                <Grid item xs={12} sm={6} md={6} lg={6}>
+                </Box>
+                <Box sx={{ width: 350, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#fce4ec', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <PersonIcon sx={{ fontSize: 40, color: '#d81b60' }} />
@@ -433,8 +430,8 @@ const allDates = orders
                       <Typography variant="h4" fontWeight={700}>{uniqueEmails}</Typography>
                     </Box>
                   </Card>
-                </Grid>
-              </Grid>
+                </Box>
+              </Box>
               {/* WYKRES SEZONOWOŚCI */}
               <Box display="flex" gap={2} alignItems="center" mb={2} mt={4}>
                 <Typography variant="h6" fontWeight={600} align="left" sx={{ flex: 1 }}>
