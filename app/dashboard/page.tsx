@@ -36,7 +36,7 @@ function parsePolishDate(dateStr: string) {
   if (match) {
     const [_, day, month, year, time] = match;
     const monthKey = month.toLowerCase();
-    const monthNum = polishMonths[monthKey];
+    const monthNum = (polishMonths as Record<string, string>)[monthKey];
     if (monthNum) {
       return dayjs(`${year}-${monthNum}-${day.padStart(2, '0')} ${time}`, "YYYY-MM-DD HH:mm");
     }
@@ -51,7 +51,12 @@ export default function Dashboard() {
   const [aggregation, setAggregation] = useState("day");
   const [dateRange, setDateRange] = useState("30d");
   // Ustal najnowszą datę z zamówień:
-  const allDates = orders.map(row => parsePolishDate(row["purchase date"]).format("YYYY-MM-DD"));
+  const allDates = orders
+    .map(row => {
+      const date = parsePolishDate(row["purchase date"]);
+      return date ? date.format("YYYY-MM-DD") : null;
+    })
+    .filter(Boolean);
   const newestDate = allDates.length > 0 ? allDates.sort().reverse()[0] : dayjs().format("YYYY-MM-DD");
   const [selectedDay, setSelectedDay] = useState(newestDate);
   useEffect(() => {
