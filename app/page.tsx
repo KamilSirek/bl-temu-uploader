@@ -130,7 +130,7 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const handleUserSelect = (e: React.ChangeEvent<{ value: unknown }>) => {
+  const handleUserSelect = (e: any) => {
     const login = e.target.value as string;
     setSelectedUser(login);
     // Od razu czyść zamówienia i ładuj z localStorage
@@ -389,8 +389,10 @@ export default function Home() {
           Import zamówień TEMU do BaseLinker
         </Typography>
         <form onSubmit={handleSubmit}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+          {/* FLEXBOX ALTERNATYWA DLA GRID */}
+          {/* Zakomentowany Grid powyżej – możesz go odkomentować lokalnie */}
+          <Box display="flex" flexWrap="wrap" gap={3}>
+            <Box minWidth={350} maxWidth={600} width="100%" m="auto">
               <Paper sx={{ p: 3, borderRadius: 3, mb: 2 }}>
                 <FormControl fullWidth sx={{ mb: 2 }}>
                   <InputLabel id="user-label">Użytkownik</InputLabel>
@@ -470,8 +472,8 @@ export default function Home() {
                 <Button type="submit" variant="contained" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 700, fontSize: 16, mt: 2, width: '100%' }}>Wyślij zamówienia do Base</Button>
                 {message && <Typography sx={{ mt: 2 }}>{message}</Typography>}
               </Paper>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box minWidth={350} maxWidth={600} width="100%" m="auto">
               {orders.length > 0 && (
                 <Paper sx={{ p: 3, borderRadius: 3, mb: 2 }}>
                   <Typography fontWeight={600} mb={1}>Wybierz zamówienia do wysłania:</Typography>
@@ -538,8 +540,8 @@ export default function Home() {
                   </TableContainer>
                 </Paper>
               )}
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </form>
       </Box>
       <Box sx={{ width: '100%', textAlign: 'center', mt: 6, py: 2, color: '#888', fontSize: 15 }}>
