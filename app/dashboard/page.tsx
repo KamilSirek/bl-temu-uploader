@@ -430,31 +430,7 @@ export default function Dashboard() {
                   </Card>
                 </Box>
               </Box>
-              {/* WYKRES SEZONOWOŚCI */}
-              <Box display="flex" gap={2} alignItems="center" mb={2} mt={4}>
-                <Typography variant="h6" fontWeight={600} align="left" sx={{ flex: 1 }}>
-                  Sezonowość: liczba zamówień
-                </Typography>
-                <select value={aggregation} onChange={e => setAggregation(e.target.value)} style={{ padding: 6, borderRadius: 6, border: '1px solid #ccc' }}>
-                  <option value="day">Dziennie</option>
-                  <option value="week">Tygodniowo</option>
-                  <option value="month">Miesięcznie</option>
-                </select>
-              </Box>
-              <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 2, mb: 2 }}>
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" fontSize={12} tick={{ fill: '#888' }} />
-                    <YAxis allowDecimals={false} fontSize={12} tick={{ fill: '#888' }} />
-                    <Tooltip formatter={(value: any, name: string) => name === "Obrót" ? `${Number(value).toFixed(2)} zł` : value} />
-                    <Legend />
-                    <Line type="monotone" dataKey="Zamówienia" stroke="#fd6615" strokeWidth={3} dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="Obrót" stroke="#388e3c" strokeWidth={3} dot={{ r: 3 }} yAxisId={1} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Paper>
-              {/* ...pozostała część kodu bez zmian... */}
+              {/* ...dalej reszta kodu dashboardu... */}
             </>
           )}
           {!selectedUser && <Typography align="center" color="text.secondary" mt={8}>Wybierz konto, aby zobaczyć statystyki.</Typography>}
