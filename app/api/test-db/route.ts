@@ -11,5 +11,7 @@ export async function GET() {
   });
   const [rows] = await connection.execute('SELECT NOW() as now');
   await connection.end();
-  return NextResponse.json({ now: rows[0].now });
+  // Poprawka typowania wyniku:
+  const now = Array.isArray(rows) && rows.length > 0 ? (rows[0] as any).now : null;
+  return NextResponse.json({ now });
 } 
