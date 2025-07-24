@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 dayjs.extend(customParseFormat);
 dayjs.extend(utc);
 
-const polishMonths = {
+const polishMonths: { [key: string]: string } = {
   "sty.": "01",
   "lut.": "02",
   "mar.": "03",
@@ -29,7 +29,6 @@ const polishMonths = {
   "lis.": "11",
   "gru.": "12"
 };
-
 function parsePolishDate(dateStr: string) {
   if (!dateStr) return null;
   const match = dateStr.match(/(\d{1,2}) ([a-ząćęłńóśźż.]+) (\d{4}), (\d{2}:\d{2})/i);
