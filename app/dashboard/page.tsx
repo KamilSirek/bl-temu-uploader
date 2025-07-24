@@ -481,6 +481,9 @@ const allDates = orders
                       .sort((a, b) => {
                         const dateA = parsePolishDate(a["purchase date"]);
                         const dateB = parsePolishDate(b["purchase date"]);
+                        if (!dateA && !dateB) return 0;
+                        if (!dateA) return 1;
+                        if (!dateB) return -1;
                         return dateA.isBefore(dateB) ? 1 : -1;
                       })
                       .map((row, i) => (
