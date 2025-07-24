@@ -190,7 +190,9 @@ export default function Dashboard() {
   } else if (aggregation === "month") {
     const monthMap: Record<string, { Zamówienia: number, Obrót: number }> = {};
     filteredOrdersByRange.forEach(row => {
-      const month = parsePolishDate(row["purchase date"]).format("YYYY-MM");
+      const date = parsePolishDate(row["purchase date"]);
+      const month = date ? date.format("YYYY-MM") : "";
+      if (!month) return;
       if (!monthMap[month]) monthMap[month] = { Zamówienia: 0, Obrót: 0 };
       monthMap[month].Zamówienia += 1;
       const base = parseFloat(row["base price total"] || 0);
