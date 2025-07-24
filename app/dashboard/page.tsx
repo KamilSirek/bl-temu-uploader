@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Card, Typography, Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField, Grid2 as Grid } from "@mui/material";
+import { Card, Typography, Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField } from "@mui/material";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
@@ -50,7 +50,6 @@ export default function Dashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [aggregation, setAggregation] = useState("day");
   const [dateRange, setDateRange] = useState("30d");
-  // Ustal najnowszą datę z zamówień:
   const allDates = orders
     .map(row => {
       const date = parsePolishDate(row["purchase date"]);
@@ -114,7 +113,6 @@ export default function Dashboard() {
     }
   }, [users]);
 
-  // Funkcja pomocnicza do zakresów dat
   function getDateRange(range: string) {
     const today = dayjs();
     switch (range) {
@@ -135,7 +133,6 @@ export default function Dashboard() {
     }
   }
 
-  // Filtrowanie zamówień po dacie
   const [from, to] = getDateRange(dateRange);
   const filteredOrders = orders.filter(row => {
     const date = parsePolishDate(row["purchase date"]);
@@ -147,7 +144,6 @@ export default function Dashboard() {
     return date && date.format("YYYY-MM-DD") === selectedDay;
   });
 
-  // Generowanie danych do wykresu wg agregacji
   let chartData: { label: string, Zamówienia: number, Obrót: number }[] = [];
   if (aggregation === "day") {
     const daysArr = [];
@@ -204,7 +200,6 @@ export default function Dashboard() {
     chartData = Object.entries(monthMap).map(([label, obj]) => ({ label, Zamówienia: obj.Zamówienia, Obrót: Math.round(obj.Obrót * 100) / 100 })).sort((a, b) => a.label.localeCompare(b.label));
   }
 
-  // Statystyki dla kafelków/statystyk:
   const sumProducts = filteredOrdersByRange.reduce((acc, row) => {
     const base = parseFloat(row["base price total"] || 0);
     const tax = parseFloat(row["product tax total"] || 0);
@@ -274,7 +269,6 @@ export default function Dashboard() {
     }
   };
 
-  // Eksport/import użytkowników
   const handleExportUsers = () => {
     const data = localStorage.getItem("bl_users");
     if (data) {
@@ -367,9 +361,9 @@ export default function Dashboard() {
                   <option value="this_year">Bieżący rok</option>
                 </select>
               </Box>
-              {/* Kafelki używające Grid2 - BEZ item prop! */}
-              <Grid container spacing={3} mb={2} justifyContent="center">
-                <Grid xs={12} sm={6} md={6} lg={6}>
+              {/* Kafelki/statystyki korzystają z Flexboxa */}
+              <Box display="flex" flexWrap="wrap" gap={3} mb={2} justifyContent="center">
+                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#e3f2fd', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <ShoppingCartIcon sx={{ fontSize: 40, color: '#1976d2' }} />
@@ -379,8 +373,8 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{filteredOrdersByRange.length}</Typography>
                     </Box>
                   </Card>
-                </Grid>
-                <Grid xs={12} sm={6} md={6} lg={6}>
+                </Box>
+                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#e8f5e9', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <AttachMoneyIcon sx={{ fontSize: 40, color: '#388e3c' }} />
@@ -390,8 +384,8 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{totalObrot.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Grid>
-                <Grid xs={12} sm={6} md={6} lg={6}>
+                </Box>
+                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#e8f5e9', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <AttachMoneyIcon sx={{ fontSize: 40, color: '#388e3c' }} />
@@ -401,8 +395,8 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{sumProducts.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Grid>
-                <Grid xs={12} sm={6} md={6} lg={6}>
+                </Box>
+                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#fff3e0', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <LocalShippingIcon sx={{ fontSize: 40, color: '#f57c00' }} />
@@ -412,8 +406,8 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{sumDelivery.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Grid>
-                <Grid xs={12} sm={6} md={6} lg={6}>
+                </Box>
+                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#f3e5f5', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <BarChartIcon sx={{ fontSize: 40, color: '#8e24aa' }} />
@@ -423,8 +417,8 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{avgOrder.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Grid>
-                <Grid xs={12} sm={6} md={6} lg={6}>
+                </Box>
+                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#fce4ec', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <PersonIcon sx={{ fontSize: 40, color: '#d81b60' }} />
@@ -434,8 +428,8 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{uniqueEmails}</Typography>
                     </Box>
                   </Card>
-                </Grid>
-              </Grid>
+                </Box>
+              </Box>
               {/* WYKRES SEZONOWOŚCI */}
               <Box display="flex" gap={2} alignItems="center" mb={2} mt={4}>
                 <Typography variant="h6" fontWeight={600} align="left" sx={{ flex: 1 }}>
@@ -460,4 +454,12 @@ export default function Dashboard() {
                   </LineChart>
                 </ResponsiveContainer>
               </Paper>
-              {/* SEKCA ZAM
+              {/* ...pozostała część kodu bez zmian... */}
+            </>
+          )}
+          {!selectedUser && <Typography align="center" color="text.secondary" mt={8}>Wybierz konto, aby zobaczyć statystyki.</Typography>}
+        </Box>
+      </Box>
+    </>
+  );
+}
