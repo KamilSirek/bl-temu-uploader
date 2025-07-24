@@ -367,7 +367,7 @@ export default function Dashboard() {
                   <option value="this_year">Bieżący rok</option>
                 </select>
               </Box>
-              {/* Kafelki używające Grid2 */}
+              {/* Kafelki używające Grid2 - BEZ item prop! */}
               <Grid container spacing={3} mb={2} justifyContent="center">
                 <Grid xs={12} sm={6} md={6} lg={6}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
