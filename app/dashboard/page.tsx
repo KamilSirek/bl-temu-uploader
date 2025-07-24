@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Card, Typography, Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField } from "@mui/material";
+import { Card, Typography, Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField, Grid2 as Grid } from "@mui/material";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
@@ -367,11 +367,9 @@ export default function Dashboard() {
                   <option value="this_year">Bieżący rok</option>
                 </select>
               </Box>
-              {/* Kafelki/statystyki korzystają z filteredOrdersByRange */}
-              {/* FLEXBOX ALTERNATYWA DLA GRID */}
-              {/* Zakomentowany Grid powyżej – możesz go odkomentować lokalnie */}
-              <Box display="flex" flexWrap="wrap" gap={3} mb={2} justifyContent="center">
-                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
+              {/* Kafelki używające Grid2 */}
+              <Grid container spacing={3} mb={2} justifyContent="center">
+                <Grid xs={12} sm={6} md={6} lg={6}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#e3f2fd', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <ShoppingCartIcon sx={{ fontSize: 40, color: '#1976d2' }} />
@@ -381,8 +379,8 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{filteredOrdersByRange.length}</Typography>
                     </Box>
                   </Card>
-                </Box>
-                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
+                </Grid>
+                <Grid xs={12} sm={6} md={6} lg={6}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#e8f5e9', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <AttachMoneyIcon sx={{ fontSize: 40, color: '#388e3c' }} />
@@ -392,8 +390,8 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{totalObrot.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Box>
-                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
+                </Grid>
+                <Grid xs={12} sm={6} md={6} lg={6}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#e8f5e9', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <AttachMoneyIcon sx={{ fontSize: 40, color: '#388e3c' }} />
@@ -403,8 +401,8 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{sumProducts.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Box>
-                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
+                </Grid>
+                <Grid xs={12} sm={6} md={6} lg={6}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#fff3e0', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <LocalShippingIcon sx={{ fontSize: 40, color: '#f57c00' }} />
@@ -414,8 +412,8 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{sumDelivery.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Box>
-                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
+                </Grid>
+                <Grid xs={12} sm={6} md={6} lg={6}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#f3e5f5', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <BarChartIcon sx={{ fontSize: 40, color: '#8e24aa' }} />
@@ -425,8 +423,8 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{avgOrder.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Box>
-                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
+                </Grid>
+                <Grid xs={12} sm={6} md={6} lg={6}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#fce4ec', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <PersonIcon sx={{ fontSize: 40, color: '#d81b60' }} />
@@ -436,8 +434,8 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{uniqueEmails}</Typography>
                     </Box>
                   </Card>
-                </Box>
-              </Box>
+                </Grid>
+              </Grid>
               {/* WYKRES SEZONOWOŚCI */}
               <Box display="flex" gap={2} alignItems="center" mb={2} mt={4}>
                 <Typography variant="h6" fontWeight={600} align="left" sx={{ flex: 1 }}>
@@ -462,135 +460,4 @@ export default function Dashboard() {
                   </LineChart>
                 </ResponsiveContainer>
               </Paper>
-              {/* SEKCA ZAMÓWIENIA */}
-              <Typography variant="h6" fontWeight={600} mt={4} mb={1} align="left">Zamówienia</Typography>
-              {/* Tabela zamówień korzysta z 'orders' (wszystkie zamówienia) */}
-              {orders.length === 0 && (
-                <Typography align="center" color="text.secondary" mb={2}>Brak zamówień w bazie danych.</Typography>
-              )}
-              <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, mb: 2, maxHeight: 320, overflowY: 'auto' }}>
-                <Table size="small" stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell><b>ID</b></TableCell>
-                      <TableCell><b>Nazwa przedmiotu</b></TableCell>
-                      <TableCell align="right"><b>Koszt przedmiotu</b></TableCell>
-                      <TableCell align="right"><b>Koszt wysyłki</b></TableCell>
-                      <TableCell align="right"><b>Wartość całkowita</b></TableCell>
-                      <TableCell align="right"><b>Rozliczenie</b></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {[...orders]
-                      .sort((a, b) => {
-                        const dateA = parsePolishDate(a["purchase date"]);
-                        const dateB = parsePolishDate(b["purchase date"]);
-                        if (!dateA || !dateB) return 0;
-                        return dateA.isBefore(dateB) ? 1 : -1;
-                      })
-                      .map((row, i) => (
-                        <TableRow key={i}>
-                          <TableCell>{row["order id"] || row["order_id"]}</TableCell>
-                          <TableCell>{row["product name"]}</TableCell>
-                          <TableCell align="right">{parseFloat(row["base price total"] || 0).toFixed(2)} zł</TableCell>
-                          <TableCell align="right">{parseFloat(row["shipping cost"] || 0).toFixed(2)} zł</TableCell>
-                          <TableCell align="right">{(parseFloat(row["base price total"] || 0) + parseFloat(row["shipping cost"] || 0)).toFixed(2)} zł</TableCell>
-                          <TableCell align="right" sx={{ color: row["order settlement status"] === "Nierozliczone" ? 'error.main' : row["order settlement status"] === "Rozliczone" ? 'success.main' : undefined, fontWeight: 700 }}>
-                            {row["order settlement status"] || ""}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              {/* ZAMÓWIENIA Z TRACKINGIEM */}
-              <Box mt={2} mb={2} display="flex" gap={4} justifyContent="center">
-                <Paper sx={{ p: 2, borderRadius: 3, minWidth: 220, textAlign: 'center', boxShadow: 2 }}>
-                  <Typography fontWeight={600}>Zamówienia z trackingiem</Typography>
-                  <Typography color="success.main" fontWeight={700}>Z trackingiem: {withTracking}</Typography>
-                  <Typography color="text.secondary">Bez trackingu: {withoutTracking}</Typography>
-                </Paper>
-                <Paper sx={{ p: 2, borderRadius: 3, minWidth: 220, textAlign: 'center', boxShadow: 2 }}>
-                  <Typography fontWeight={600}>Zamówienia wg statusu</Typography>
-                  <Typography color="primary.main" fontWeight={700}>Wysłane: {shippedOrders}</Typography>
-                  <Typography color="text.secondary">Niewysłane: {unshippedOrders}</Typography>
-                </Paper>
-              </Box>
-              {/* SPRZEDAŻ WEDŁUG PRODUKTÓW */}
-              <Typography variant="h6" fontWeight={600} mt={4} mb={1} align="left">Sprzedaż według produktów</Typography>
-              <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, mb: 4, maxHeight: 320, overflowY: 'auto' }}>
-                <Table size="small" stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell><b>Produkt</b></TableCell>
-                      <TableCell align="right"><b>Całkowita sprzedaż</b></TableCell>
-                      <TableCell align="right"><b>Ilość sztuk</b></TableCell>
-                      <TableCell align="right"><b>% obrotów</b></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {visibleProducts.map((p, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{p.name}</TableCell>
-                        <TableCell align="right">{p.value.toFixed(2)} zł</TableCell>
-                        <TableCell align="right">{p.count}</TableCell>
-                        <TableCell align="right">{p.percent.toFixed(1)}%</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              {productSales.length > 5 && (
-                <Box textAlign="center" mb={2}>
-                  <button onClick={() => setShowAllProducts(v => !v)} style={{ padding: '6px 18px', borderRadius: 6, border: '1px solid #ccc', background: '#f8fafc', cursor: 'pointer', fontWeight: 600 }}>
-                    {showAllProducts ? 'Pokaż mniej' : 'Pokaż więcej'}
-                  </button>
-                </Box>
-              )}
-              {/* TOP 10 PRODUKTÓW I MIASTA POD WYKRESEM */}
-              <Typography variant="h6" fontWeight={600} mt={4} mb={1} align="left">TOP 10 najczęściej sprzedawanych produktów</Typography>
-              <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, mb: 4 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell><b>Produkt</b></TableCell>
-                      <TableCell align="right"><b>Sztuk</b></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {topProducts.map((p, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{p.name}</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>{p.count}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <Typography variant="h6" fontWeight={600} mt={4} mb={1} align="left">Najpopularniejsze miasta (TOP 10)</Typography>
-              <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, mb: 4 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell><b>Miasto</b></TableCell>
-                      <TableCell align="right"><b>Zamówień</b></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {topCities.map((c, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{c.city}</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>{c.count}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </>
-          )}
-          {!selectedUser && <Typography align="center" color="text.secondary" mt={8}>Wybierz konto, aby zobaczyć statystyki.</Typography>}
-        </Box>
-      </Box>
-    </>
-  );
-}
+              {/* SEKCA ZAM
