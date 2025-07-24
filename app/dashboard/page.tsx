@@ -49,7 +49,10 @@ export default function Dashboard() {
   const [aggregation, setAggregation] = useState("day");
   const [dateRange, setDateRange] = useState("30d");
   // Ustal najnowszą datę z zamówień:
-  const allDates = orders.map(row => parsePolishDate(row["purchase date"]).format("YYYY-MM-DD"));
+const allDates = orders
+  .map(row => parsePolishDate(row["purchase date"]))
+  .filter(Boolean)
+  .map(date => date!.format("YYYY-MM-DD"));
   const newestDate = allDates.length > 0 ? allDates.sort().reverse()[0] : dayjs().format("YYYY-MM-DD");
   const [selectedDay, setSelectedDay] = useState(newestDate);
   useEffect(() => {
