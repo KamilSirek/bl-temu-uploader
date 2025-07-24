@@ -171,7 +171,9 @@ const allDates = orders
   } else if (aggregation === "week") {
     const weekMap: Record<string, { Zamówienia: number, Obrót: number }> = {};
     filteredOrdersByRange.forEach(row => {
-      const week = parsePolishDate(row["purchase date"]).startOf("week").format("YYYY-[T]WW");
+      const parsedDate = parsePolishDate(row["purchase date"]);
+      if (!parsedDate) return;
+      const week = parsedDate.startOf("week").format("YYYY-[T]WW");
       if (!weekMap[week]) weekMap[week] = { Zamówienia: 0, Obrót: 0 };
       weekMap[week].Zamówienia += 1;
       const base = parseFloat(row["base price total"] || 0);
@@ -184,7 +186,9 @@ const allDates = orders
   } else if (aggregation === "month") {
     const monthMap: Record<string, { Zamówienia: number, Obrót: number }> = {};
     filteredOrdersByRange.forEach(row => {
-      const month = parsePolishDate(row["purchase date"]).format("YYYY-MM");
+      const parsedDate = parsePolishDate(row["purchase date"]);
+      if (!parsedDate) return;
+      const month = parsedDate.format("YYYY-MM");
       if (!monthMap[month]) monthMap[month] = { Zamówienia: 0, Obrót: 0 };
       monthMap[month].Zamówienia += 1;
       const base = parseFloat(row["base price total"] || 0);
