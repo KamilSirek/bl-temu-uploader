@@ -158,7 +158,10 @@ export default function Dashboard() {
     }
     chartData = daysArr.map(day => {
       const label = day.format("YYYY-MM-DD");
-      const ordersForDay = filteredOrdersByRange.filter(row => parsePolishDate(row["purchase date"]).format("YYYY-MM-DD") === label);
+      const ordersForDay = filteredOrdersByRange.filter(row => {
+        const date = parsePolishDate(row["purchase date"]);
+        return date && date.format("YYYY-MM-DD") === label;
+      });
       const count = ordersForDay.length;
       const obrot = ordersForDay.reduce((acc, row) => {
         const base = parseFloat(row["base price total"] || 0);
