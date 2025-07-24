@@ -443,8 +443,6 @@ const allDates = orders
                   <option value="month">Miesięcznie</option>
                 </select>
               </Box>
-              {/* Tymczasowy podgląd danych chartData */}
-              <pre style={{ maxHeight: 200, overflow: 'auto', background: '#f5f5f5', fontSize: 12, marginBottom: 16 }}>{JSON.stringify(chartData, null, 2)}</pre>
               <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 2, mb: 2 }}>
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
