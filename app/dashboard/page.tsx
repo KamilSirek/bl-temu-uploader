@@ -175,7 +175,9 @@ export default function Dashboard() {
   } else if (aggregation === "week") {
     const weekMap: Record<string, { Zamówienia: number, Obrót: number }> = {};
     filteredOrdersByRange.forEach(row => {
-      const week = parsePolishDate(row["purchase date"]).startOf("week").format("YYYY-[T]WW");
+      const date = parsePolishDate(row["purchase date"]);
+      const week = date ? date.startOf("week").format("YYYY-[T]WW") : "";
+      if (!week) return;
       if (!weekMap[week]) weekMap[week] = { Zamówienia: 0, Obrót: 0 };
       weekMap[week].Zamówienia += 1;
       const base = parseFloat(row["base price total"] || 0);
