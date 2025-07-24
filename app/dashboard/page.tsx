@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Card, Typography, Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField } from "@mui/material";
+import { Card, Grid, Typography, Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, TextField } from "@mui/material";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 dayjs.extend(customParseFormat);
 dayjs.extend(utc);
 
-const polishMonths: { [key: string]: string } = {
+const polishMonths = {
   "sty.": "01",
   "lut.": "02",
   "mar.": "03",
@@ -35,8 +35,7 @@ function parsePolishDate(dateStr: string) {
   const match = dateStr.match(/(\d{1,2}) ([a-ząćęłńóśźż.]+) (\d{4}), (\d{2}:\d{2})/i);
   if (match) {
     const [_, day, month, year, time] = match;
-    const monthKey = month.toLowerCase();
-    const monthNum = (polishMonths as Record<string, string>)[monthKey];
+    const monthNum = polishMonths[month.toLowerCase()];
     if (monthNum) {
       return dayjs(`${year}-${monthNum}-${day.padStart(2, '0')} ${time}`, "YYYY-MM-DD HH:mm");
     }
@@ -50,12 +49,8 @@ export default function Dashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [aggregation, setAggregation] = useState("day");
   const [dateRange, setDateRange] = useState("30d");
-  const allDates = orders
-    .map(row => {
-      const date = parsePolishDate(row["purchase date"]);
-      return date ? date.format("YYYY-MM-DD") : null;
-    })
-    .filter(Boolean);
+  // Ustal najnowszą datę z zamówień:
+  const allDates = orders.map(row => parsePolishDate(row["purchase date"]).format("YYYY-MM-DD"));
   const newestDate = allDates.length > 0 ? allDates.sort().reverse()[0] : dayjs().format("YYYY-MM-DD");
   const [selectedDay, setSelectedDay] = useState(newestDate);
   useEffect(() => {
@@ -113,6 +108,7 @@ export default function Dashboard() {
     }
   }, [users]);
 
+  // Funkcja pomocnicza do zakresów dat
   function getDateRange(range: string) {
     const today = dayjs();
     switch (range) {
@@ -133,6 +129,7 @@ export default function Dashboard() {
     }
   }
 
+  // Filtrowanie zamówień po dacie
   const [from, to] = getDateRange(dateRange);
   const filteredOrders = orders.filter(row => {
     const date = parsePolishDate(row["purchase date"]);
@@ -144,6 +141,7 @@ export default function Dashboard() {
     return date && date.format("YYYY-MM-DD") === selectedDay;
   });
 
+  // Generowanie danych do wykresu wg agregacji
   let chartData: { label: string, Zamówienia: number, Obrót: number }[] = [];
   if (aggregation === "day") {
     const daysArr = [];
@@ -154,10 +152,7 @@ export default function Dashboard() {
     }
     chartData = daysArr.map(day => {
       const label = day.format("YYYY-MM-DD");
-      const ordersForDay = filteredOrdersByRange.filter(row => {
-        const date = parsePolishDate(row["purchase date"]);
-        return date && date.format("YYYY-MM-DD") === label;
-      });
+      const ordersForDay = filteredOrdersByRange.filter(row => parsePolishDate(row["purchase date"]).format("YYYY-MM-DD") === label);
       const count = ordersForDay.length;
       const obrot = ordersForDay.reduce((acc, row) => {
         const base = parseFloat(row["base price total"] || 0);
@@ -171,9 +166,7 @@ export default function Dashboard() {
   } else if (aggregation === "week") {
     const weekMap: Record<string, { Zamówienia: number, Obrót: number }> = {};
     filteredOrdersByRange.forEach(row => {
-      const date = parsePolishDate(row["purchase date"]);
-      const week = date ? date.startOf("week").format("YYYY-[T]WW") : "";
-      if (!week) return;
+      const week = parsePolishDate(row["purchase date"]).startOf("week").format("YYYY-[T]WW");
       if (!weekMap[week]) weekMap[week] = { Zamówienia: 0, Obrót: 0 };
       weekMap[week].Zamówienia += 1;
       const base = parseFloat(row["base price total"] || 0);
@@ -186,9 +179,7 @@ export default function Dashboard() {
   } else if (aggregation === "month") {
     const monthMap: Record<string, { Zamówienia: number, Obrót: number }> = {};
     filteredOrdersByRange.forEach(row => {
-      const date = parsePolishDate(row["purchase date"]);
-      const month = date ? date.format("YYYY-MM") : "";
-      if (!month) return;
+      const month = parsePolishDate(row["purchase date"]).format("YYYY-MM");
       if (!monthMap[month]) monthMap[month] = { Zamówienia: 0, Obrót: 0 };
       monthMap[month].Zamówienia += 1;
       const base = parseFloat(row["base price total"] || 0);
@@ -200,6 +191,7 @@ export default function Dashboard() {
     chartData = Object.entries(monthMap).map(([label, obj]) => ({ label, Zamówienia: obj.Zamówienia, Obrót: Math.round(obj.Obrót * 100) / 100 })).sort((a, b) => a.label.localeCompare(b.label));
   }
 
+  // Statystyki dla kafelków/statystyk:
   const sumProducts = filteredOrdersByRange.reduce((acc, row) => {
     const base = parseFloat(row["base price total"] || 0);
     const tax = parseFloat(row["product tax total"] || 0);
@@ -269,6 +261,7 @@ export default function Dashboard() {
     }
   };
 
+  // Eksport/import użytkowników
   const handleExportUsers = () => {
     const data = localStorage.getItem("bl_users");
     if (data) {
@@ -361,9 +354,10 @@ export default function Dashboard() {
                   <option value="this_year">Bieżący rok</option>
                 </select>
               </Box>
-              {/* Kafelki/statystyki korzystają z Flexboxa */}
-              <Box display="flex" flexWrap="wrap" gap={3} mb={2} justifyContent="center">
-                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
+              {/* Kafelki/statystyki korzystają z filteredOrdersByRange */}
+              <Grid container spacing={3} mb={2} justifyContent="center">
+                {/* Rząd 1 */}
+                <Grid item xs={12} sm={6} md={6} lg={6}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#e3f2fd', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <ShoppingCartIcon sx={{ fontSize: 40, color: '#1976d2' }} />
@@ -373,8 +367,8 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{filteredOrdersByRange.length}</Typography>
                     </Box>
                   </Card>
-                </Box>
-                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
+                </Grid>
+                <Grid item xs={12} sm={6} md={6} lg={6}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#e8f5e9', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <AttachMoneyIcon sx={{ fontSize: 40, color: '#388e3c' }} />
@@ -384,8 +378,9 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{totalObrot.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Box>
-                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
+                </Grid>
+                {/* Rząd 2 */}
+                <Grid item xs={12} sm={6} md={6} lg={6}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#e8f5e9', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <AttachMoneyIcon sx={{ fontSize: 40, color: '#388e3c' }} />
@@ -395,8 +390,8 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{sumProducts.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Box>
-                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
+                </Grid>
+                <Grid item xs={12} sm={6} md={6} lg={6}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#fff3e0', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <LocalShippingIcon sx={{ fontSize: 40, color: '#f57c00' }} />
@@ -406,8 +401,9 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{sumDelivery.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Box>
-                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
+                </Grid>
+                {/* Rząd 3 */}
+                <Grid item xs={12} sm={6} md={6} lg={6}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#f3e5f5', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <BarChartIcon sx={{ fontSize: 40, color: '#8e24aa' }} />
@@ -417,8 +413,8 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{avgOrder.toFixed(2)} zł</Typography>
                     </Box>
                   </Card>
-                </Box>
-                <Box minWidth={350} maxWidth={350} width="100%" height={130} m="auto">
+                </Grid>
+                <Grid item xs={12} sm={6} md={6} lg={6}>
                   <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
                     <Box sx={{ mr: 2, bgcolor: '#fce4ec', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <PersonIcon sx={{ fontSize: 40, color: '#d81b60' }} />
@@ -428,9 +424,155 @@ export default function Dashboard() {
                       <Typography variant="h4" fontWeight={700}>{uniqueEmails}</Typography>
                     </Box>
                   </Card>
-                </Box>
+                </Grid>
+              </Grid>
+              {/* WYKRES SEZONOWOŚCI */}
+              <Box display="flex" gap={2} alignItems="center" mb={2} mt={4}>
+                <Typography variant="h6" fontWeight={600} align="left" sx={{ flex: 1 }}>
+                  Sezonowość: liczba zamówień
+                </Typography>
+                <select value={aggregation} onChange={e => setAggregation(e.target.value)} style={{ padding: 6, borderRadius: 6, border: '1px solid #ccc' }}>
+                  <option value="day">Dziennie</option>
+                  <option value="week">Tygodniowo</option>
+                  <option value="month">Miesięcznie</option>
+                </select>
               </Box>
-              {/* ...dalej reszta kodu dashboardu... */}
+              <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 2, mb: 2 }}>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" fontSize={12} tick={{ fill: '#888' }} />
+                    <YAxis allowDecimals={false} fontSize={12} tick={{ fill: '#888' }} />
+                    <Tooltip formatter={(value: any, name: string) => name === "Obrót" ? `${Number(value).toFixed(2)} zł` : value} />
+                    <Legend />
+                    <Line type="monotone" dataKey="Zamówienia" stroke="#fd6615" strokeWidth={3} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="Obrót" stroke="#388e3c" strokeWidth={3} dot={{ r: 3 }} yAxisId={1} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Paper>
+              {/* SEKCA ZAMÓWIENIA */}
+              <Typography variant="h6" fontWeight={600} mt={4} mb={1} align="left">Zamówienia</Typography>
+              {/* Tabela zamówień korzysta z 'orders' (wszystkie zamówienia) */}
+              {orders.length === 0 && (
+                <Typography align="center" color="text.secondary" mb={2}>Brak zamówień w bazie danych.</Typography>
+              )}
+              <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, mb: 2, maxHeight: 320, overflowY: 'auto' }}>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell><b>ID</b></TableCell>
+                      <TableCell><b>Nazwa przedmiotu</b></TableCell>
+                      <TableCell align="right"><b>Koszt przedmiotu</b></TableCell>
+                      <TableCell align="right"><b>Koszt wysyłki</b></TableCell>
+                      <TableCell align="right"><b>Wartość całkowita</b></TableCell>
+                      <TableCell align="right"><b>Rozliczenie</b></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {[...orders]
+                      .sort((a, b) => {
+                        const dateA = parsePolishDate(a["purchase date"]);
+                        const dateB = parsePolishDate(b["purchase date"]);
+                        return dateA.isBefore(dateB) ? 1 : -1;
+                      })
+                      .map((row, i) => (
+                        <TableRow key={i}>
+                          <TableCell>{row["order id"] || row["order_id"]}</TableCell>
+                          <TableCell>{row["product name"]}</TableCell>
+                          <TableCell align="right">{parseFloat(row["base price total"] || 0).toFixed(2)} zł</TableCell>
+                          <TableCell align="right">{parseFloat(row["shipping cost"] || 0).toFixed(2)} zł</TableCell>
+                          <TableCell align="right">{(parseFloat(row["base price total"] || 0) + parseFloat(row["shipping cost"] || 0)).toFixed(2)} zł</TableCell>
+                          <TableCell align="right" sx={{ color: row["order settlement status"] === "Nierozliczone" ? 'error.main' : row["order settlement status"] === "Rozliczone" ? 'success.main' : undefined, fontWeight: 700 }}>
+                            {row["order settlement status"] || ""}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              {/* ZAMÓWIENIA Z TRACKINGIEM */}
+              <Box mt={2} mb={2} display="flex" gap={4} justifyContent="center">
+                <Paper sx={{ p: 2, borderRadius: 3, minWidth: 220, textAlign: 'center', boxShadow: 2 }}>
+                  <Typography fontWeight={600}>Zamówienia z trackingiem</Typography>
+                  <Typography color="success.main" fontWeight={700}>Z trackingiem: {withTracking}</Typography>
+                  <Typography color="text.secondary">Bez trackingu: {withoutTracking}</Typography>
+                </Paper>
+                <Paper sx={{ p: 2, borderRadius: 3, minWidth: 220, textAlign: 'center', boxShadow: 2 }}>
+                  <Typography fontWeight={600}>Zamówienia wg statusu</Typography>
+                  <Typography color="primary.main" fontWeight={700}>Wysłane: {shippedOrders}</Typography>
+                  <Typography color="text.secondary">Niewysłane: {unshippedOrders}</Typography>
+                </Paper>
+              </Box>
+              {/* SPRZEDAŻ WEDŁUG PRODUKTÓW */}
+              <Typography variant="h6" fontWeight={600} mt={4} mb={1} align="left">Sprzedaż według produktów</Typography>
+              <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, mb: 4, maxHeight: 320, overflowY: 'auto' }}>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell><b>Produkt</b></TableCell>
+                      <TableCell align="right"><b>Całkowita sprzedaż</b></TableCell>
+                      <TableCell align="right"><b>Ilość sztuk</b></TableCell>
+                      <TableCell align="right"><b>% obrotów</b></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {visibleProducts.map((p, i) => (
+                      <TableRow key={i}>
+                        <TableCell>{p.name}</TableCell>
+                        <TableCell align="right">{p.value.toFixed(2)} zł</TableCell>
+                        <TableCell align="right">{p.count}</TableCell>
+                        <TableCell align="right">{p.percent.toFixed(1)}%</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              {productSales.length > 5 && (
+                <Box textAlign="center" mb={2}>
+                  <button onClick={() => setShowAllProducts(v => !v)} style={{ padding: '6px 18px', borderRadius: 6, border: '1px solid #ccc', background: '#f8fafc', cursor: 'pointer', fontWeight: 600 }}>
+                    {showAllProducts ? 'Pokaż mniej' : 'Pokaż więcej'}
+                  </button>
+                </Box>
+              )}
+              {/* TOP 10 PRODUKTÓW I MIASTA POD WYKRESEM */}
+              <Typography variant="h6" fontWeight={600} mt={4} mb={1} align="left">TOP 10 najczęściej sprzedawanych produktów</Typography>
+              <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, mb: 4 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell><b>Produkt</b></TableCell>
+                      <TableCell align="right"><b>Sztuk</b></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {topProducts.map((p, i) => (
+                      <TableRow key={i}>
+                        <TableCell>{p.name}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>{p.count}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <Typography variant="h6" fontWeight={600} mt={4} mb={1} align="left">Najpopularniejsze miasta (TOP 10)</Typography>
+              <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, mb: 4 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell><b>Miasto</b></TableCell>
+                      <TableCell align="right"><b>Zamówień</b></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {topCities.map((c, i) => (
+                      <TableRow key={i}>
+                        <TableCell>{c.city}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>{c.count}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </>
           )}
           {!selectedUser && <Typography align="center" color="text.secondary" mt={8}>Wybierz konto, aby zobaczyć statystyki.</Typography>}
