@@ -50,7 +50,7 @@ export default function FAQPage() {
       <Box sx={{ width: '100%', background: '#fd6615', py: 1.5, display: 'flex', alignItems: 'center', mb: 4, position: 'relative' }}>
         <img src="/logo.png" alt="Logo firmy" style={{ height: 32, marginLeft: 32, marginRight: 20, background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px #0002' }} />
         <Typography sx={{ color: '#fff', fontSize: 22, fontWeight: 700, letterSpacing: 1 }}>
-          Import zamówień TEMU do BaseLinker
+          vSprint - TEMU integrator
         </Typography>
         <Box sx={{ position: 'absolute', right: 32, top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: 2 }}>
           <Button variant="outlined" component="label" sx={{ borderColor: '#fd6615', color: '#fd6615', fontWeight: 700, fontSize: 16, borderRadius: 2, background: '#fff' }}>
@@ -63,7 +63,7 @@ export default function FAQPage() {
       </Box>
       {/* Przyciski nawigacyjne pod paskiem */}
       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2, mb: 2 }}>
-        <Button variant="contained" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 700, borderRadius: 2 }} onClick={() => router.push('/')}>Strona główna</Button>
+        <Button variant="contained" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 700, borderRadius: 2 }} onClick={() => router.push('/')}>Import TEMU - Base</Button>
         <Button variant="contained" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 700, borderRadius: 2 }} onClick={() => router.push('/dashboard')}>Dashboard</Button>
         <Button variant="contained" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 700, borderRadius: 2 }} onClick={() => router.push('/faq')}>FAQ</Button>
       </Box>
@@ -106,6 +106,13 @@ export default function FAQPage() {
           </ul>
           <Typography variant="body2" color="text.secondary">W razie pytań lub problemów skontaktuj się z autorem aplikacji.</Typography>
         </Paper>
+      </Box>
+      <Box sx={{ width: '100%', textAlign: 'center', mt: 6, py: 2, color: '#888', fontSize: 15 }}>
+        <div>vSprint – narzędzie dla sprzedawców Allegro | powered by AI</div>
+        <div>
+          <a href="https://www.vsprint.pl" target="_blank" rel="noopener noreferrer" style={{ color: '#fd6615', textDecoration: 'none', fontWeight: 500 }}>www.vsprint.pl</a>
+          <span style={{ marginLeft: 12, color: '#888', fontWeight: 400 }}>| wersja beta 1.0.0.</span>
+        </div>
       </Box>
     </>
   );

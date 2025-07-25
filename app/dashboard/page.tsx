@@ -309,22 +309,22 @@ const allDates = orders
       <Box sx={{ width: '100%', background: '#fd6615', py: 1.5, display: 'flex', alignItems: 'center', mb: 4, position: 'relative' }}>
         <img src="/logo.png" alt="Logo firmy" style={{ height: 32, marginLeft: 32, marginRight: 20, background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px #0002' }} />
         <Typography sx={{ color: '#fff', fontSize: 22, fontWeight: 700, letterSpacing: 1 }}>
-          Import zamówień TEMU do BaseLinker
+          vSprint - TEMU integrator
         </Typography>
         <Box sx={{ position: 'absolute', right: 32, top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: 2 }}>
-          <Button variant="outlined" component="label" sx={{ borderColor: '#fff', color: '#fff', fontWeight: 700, fontSize: 16, borderRadius: 2, background: 'transparent' }}>
+          <Button variant="outlined" component="label" sx={{ borderColor: '#fd6615', color: '#fd6615', fontWeight: 700, fontSize: 16, borderRadius: 2, background: '#fff', '&:hover': { bgcolor: '#ffe0d6', borderColor: '#fd6615' } }}>
             Importuj użytkownika
             <input type="file" accept="application/json" onChange={handleImportUsers} hidden />
           </Button>
-          <Button variant="outlined" sx={{ borderColor: '#fff', color: '#fff', fontWeight: 700, fontSize: 16, borderRadius: 2, background: 'transparent' }} onClick={handleExportUsers}>Eksportuj użytkownika</Button>
-          <button onClick={handleLogout} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #fff', background: '#fff', color: '#fd6615', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 2px 8px #0002', fontFamily: 'inherit', letterSpacing: 1 }}>Wyloguj</button>
+          <Button variant="outlined" sx={{ borderColor: '#fd6615', color: '#fd6615', fontWeight: 700, fontSize: 16, borderRadius: 2, background: '#fff', '&:hover': { bgcolor: '#ffe0d6', borderColor: '#fd6615' } }} onClick={handleExportUsers}>Eksportuj użytkownika</Button>
+          <button onClick={handleLogout} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #fd6615', background: '#fff', color: '#fd6615', fontWeight: 700, fontSize: 16, cursor: 'pointer', boxShadow: '0 2px 8px #0002', fontFamily: 'inherit', letterSpacing: 1 }}>Wyloguj</button>
         </Box>
       </Box>
       {/* PRZYCISKI NAWIGACYJNE */}
       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2, mb: 2 }}>
-        <Button variant="outlined" sx={{ borderColor: '#fd6615', color: '#fd6615', fontWeight: 700, fontSize: 16, textTransform: 'none', borderRadius: 2 }} onClick={() => router.push('/')}>Strona główna</Button>
-        <Button variant="contained" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 700, fontSize: 16, textTransform: 'none', borderRadius: 2, '&:hover': { bgcolor: '#ff7d2a' } }} onClick={() => router.push('/dashboard')}>Dashboard</Button>
-        <Button variant="outlined" sx={{ borderColor: '#fd6615', color: '#fd6615', fontWeight: 700, fontSize: 16, textTransform: 'none', borderRadius: 2 }} onClick={() => router.push('/faq')}>FAQ</Button>
+        <Button variant="contained" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 700, borderRadius: 2 }} onClick={() => router.push('/')}>Import TEMU - Base</Button>
+        <Button variant="contained" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 700, borderRadius: 2 }} onClick={() => router.push('/dashboard')}>Dashboard</Button>
+        <Button variant="contained" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 700, borderRadius: 2 }} onClick={() => router.push('/faq')}>FAQ</Button>
       </Box>
       <Box sx={{ minHeight: '100vh', background: '#f8fafc', py: 6 }}>
         <Box sx={{ maxWidth: 1000, mx: 'auto', p: { xs: 2, md: 4 }, background: '#fff', borderRadius: 3, boxShadow: 2 }}>
@@ -586,6 +586,13 @@ const allDates = orders
           )}
           {!selectedUser && <Typography align="center" color="text.secondary" mt={8}>Wybierz konto, aby zobaczyć statystyki.</Typography>}
         </Box>
+      </Box>
+      <Box sx={{ width: '100%', textAlign: 'center', mt: 6, py: 2, color: '#888', fontSize: 15 }}>
+        <div>vSprint – narzędzie dla sprzedawców Allegro | powered by AI</div>
+        <div>
+          <a href="https://www.vsprint.pl" target="_blank" rel="noopener noreferrer" style={{ color: '#fd6615', textDecoration: 'none', fontWeight: 500 }}>www.vsprint.pl</a>
+          <span style={{ marginLeft: 12, color: '#888', fontWeight: 400 }}>| wersja beta 1.0.0.</span>
+        </div>
       </Box>
     </>
   );

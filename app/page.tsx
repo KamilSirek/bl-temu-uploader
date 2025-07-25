@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import * as XLSX from "xlsx";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Box, Button, Card, Typography, Grid, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Select, MenuItem, InputLabel, FormControl, Checkbox, FormControlLabel } from "@mui/material";
+import { Box, Button, Card, Typography, Grid, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Select, MenuItem, InputLabel, FormControl, Checkbox, FormControlLabel, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
 
 export default function Home() {
   const [token, setToken] = useState("");
@@ -30,6 +30,13 @@ export default function Home() {
   const [labelTracking, setLabelTracking] = useState("");
   const [labelUploadMsg, setLabelUploadMsg] = useState("");
   const labelInputRef = useRef<HTMLInputElement>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingSubmitEvent, setPendingSubmitEvent] = useState<React.FormEvent | null>(null);
+  const [lastFileInfo, setLastFileInfo] = useState<{name: string, date: string} | null>(null);
+  const [userAddedDialogOpen, setUserAddedDialogOpen] = useState(false);
+  const [confirmDeleteDialogOpen, setConfirmDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [importFileDialogOpen, setImportFileDialogOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && localStorage.getItem('vsprint_logged_in') !== '1') {
@@ -63,6 +70,14 @@ export default function Home() {
   }, [selectedUser]);
   // Przywracanie zamówień z localStorage po wybraniu użytkownika
   useEffect(() => {
+    // Wyczyść dane zamówień i statystyk natychmiast po zmianie użytkownika
+    setOrders([]);
+    setSelectedOrders([]);
+    setStats({sum: 0, count: 0});
+    setProductStats([]);
+    setImportDetails(null);
+    setSentOrders([]);
+    setLastFileInfo(null);
     if (selectedUser) {
       const data = localStorage.getItem(`orders_${selectedUser}`);
       if (data) {
@@ -86,6 +101,13 @@ export default function Home() {
           productMap[name] = (productMap[name] || 0) + qty;
         }
         setProductStats(Object.entries(productMap).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count));
+      }
+      // Przywróć info o pliku
+      const info = localStorage.getItem(`orders_fileinfo_${selectedUser}`);
+      if (info) {
+        setLastFileInfo(JSON.parse(info));
+      } else {
+        setLastFileInfo(null);
       }
     }
   }, [selectedUser]);
@@ -178,6 +200,15 @@ export default function Home() {
     setSelectedUser(newUser.login.trim());
     setNewUser({ login: "", token: "" });
     setShowAddUser(false);
+    setUserAddedDialogOpen(true);
+    // Wyczyść dane zamówień i statystyk po dodaniu nowego użytkownika
+    setOrders([]);
+    setSelectedOrders([]);
+    setStats({sum: 0, count: 0});
+    setProductStats([]);
+    setImportDetails(null);
+    setSentOrders([]);
+    setLastFileInfo(null);
   };
   const handleUserEdit = (login: string) => {
     const u = users.find(u => u.login === login);
@@ -195,8 +226,31 @@ export default function Home() {
     setShowAddUser(false);
   };
   const handleUserDelete = (login: string) => {
-    setUsers(users.filter(u => u.login !== login));
-    if (selectedUser === login) setSelectedUser("");
+    setUserToDelete(login);
+    setConfirmDeleteDialogOpen(true);
+  };
+  const confirmDeleteUser = () => {
+    if (userToDelete) {
+      setUsers(users.filter(u => u.login !== userToDelete));
+      if (selectedUser === userToDelete) {
+        setSelectedUser("");
+        setOrders([]);
+        setSentOrders([]);
+        setSelectedOrders([]);
+        setImportDetails(null);
+        setStats({sum: 0, count: 0});
+        setProductStats([]);
+      }
+      localStorage.removeItem(`orders_${userToDelete}`);
+      localStorage.removeItem(`sent_orders_${userToDelete}`);
+      localStorage.removeItem(`orders_fileinfo_${userToDelete}`);
+    }
+    setUserToDelete(null);
+    setConfirmDeleteDialogOpen(false);
+  };
+  const cancelDeleteUser = () => {
+    setUserToDelete(null);
+    setConfirmDeleteDialogOpen(false);
   };
 
   // Przy wgrywaniu pliku filtruję zamówienia, by nie pokazywać tych, które już były wysłane
@@ -204,23 +258,22 @@ export default function Home() {
     const f = e.target.files?.[0] || null;
     setFile(f);
     setOrders([]);
-    setSelectedOrders([]);
+    setSelectedOrders([]); // NIE zaznaczaj żadnych zamówień po wgraniu pliku
     setStats({sum: 0, count: 0});
     if (f) {
       const data = await f.arrayBuffer();
       const workbook = XLSX.read(data, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       let rows = XLSX.utils.sheet_to_json(sheet);
-      // Filtruj zamówienia, które już były wysłane
-      if (selectedUser) {
-        const sent = localStorage.getItem(`sent_orders_${selectedUser}`);
-        const sentIds = sent ? JSON.parse(sent) : [];
-        rows = rows.filter((row: any) => !sentIds.includes(row["order id"]));
-      }
+      // NIE filtruj zamówień, które już były wysłane
       setOrders(rows);
-      setSelectedOrders(rows.map((_, i) => i));
+      // NIE zaznaczaj żadnych zamówień domyślnie
       if (selectedUser) {
         localStorage.setItem(`orders_${selectedUser}`, JSON.stringify(rows));
+        // Zapisz info o pliku i dacie
+        const info = { name: f.name, date: new Date().toISOString() };
+        localStorage.setItem(`orders_fileinfo_${selectedUser}`, JSON.stringify(info));
+        setLastFileInfo(info);
       }
       let sum = 0;
       for (const row of rows) {
@@ -237,6 +290,9 @@ export default function Home() {
         productMap[name] = (productMap[name] || 0) + qty;
       }
       setProductStats(Object.entries(productMap).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count));
+      setImportFileDialogOpen(true);
+      // Resetuj input pliku, aby można było ponownie wybrać ten sam plik
+      if (labelInputRef.current) labelInputRef.current.value = "";
     }
   };
 
@@ -257,6 +313,12 @@ export default function Home() {
       setMessage("Zaznacz przynajmniej jedno zamówienie!");
       return;
     }
+    setPendingSubmitEvent(e);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmYes = async () => {
+    setConfirmOpen(false);
     setMessage("Wysyłanie...");
     setImportDetails(null);
     const selectedRows = orders.filter((_, i) => selectedOrders.includes(i));
@@ -290,6 +352,12 @@ export default function Home() {
     } catch (err) {
       setMessage("Błąd połączenia z serwerem");
     }
+    setPendingSubmitEvent(null);
+  };
+
+  const handleConfirmNo = () => {
+    setConfirmOpen(false);
+    setPendingSubmitEvent(null);
   };
 
   const handleLabelUpload = async (e: React.FormEvent) => {
@@ -330,9 +398,46 @@ export default function Home() {
 
   // Eksport/import użytkowników
   const handleExportUsers = () => {
-    const data = localStorage.getItem("bl_users");
-    if (data) {
-      const blob = new Blob([data], { type: "application/json" });
+    // Użyj aktualnego stanu users
+    const usersArr = users;
+    let ordersObj: Record<string, any[]> = {};
+    let sentOrdersObj: Record<string, any[]> = {};
+    let fileInfoObj: Record<string, {name: string, date: string}> = {};
+    if (usersArr.length > 0) {
+      usersArr.forEach((u: {login: string}) => {
+        const orders = localStorage.getItem(`orders_${u.login}`);
+        if (orders) {
+          try {
+            ordersObj[u.login] = JSON.parse(orders);
+          } catch {
+            ordersObj[u.login] = [];
+          }
+        } else {
+          ordersObj[u.login] = [];
+        }
+        const sent = localStorage.getItem(`sent_orders_${u.login}`);
+        if (sent) {
+          try {
+            sentOrdersObj[u.login] = JSON.parse(sent);
+          } catch {
+            sentOrdersObj[u.login] = [];
+          }
+        } else {
+          sentOrdersObj[u.login] = [];
+        }
+        const fileinfo = localStorage.getItem(`orders_fileinfo_${u.login}`);
+        if (fileinfo) {
+          try {
+            fileInfoObj[u.login] = JSON.parse(fileinfo);
+          } catch {
+            fileInfoObj[u.login] = {name: '', date: ''};
+          }
+        } else {
+          fileInfoObj[u.login] = {name: '', date: ''};
+        }
+      });
+      const exportData = { users: usersArr, orders: ordersObj, sentOrders: sentOrdersObj, fileInfo: fileInfoObj };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -349,10 +454,31 @@ export default function Home() {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const users = JSON.parse(event.target?.result as string);
-        if (Array.isArray(users)) {
-          localStorage.setItem("bl_users", JSON.stringify(users));
-          setUsers(users);
+        const parsed = JSON.parse(event.target?.result as string);
+        // Nowy format: { users: [...], orders: {login: [...]}, sentOrders: {login: [...]}, fileInfo: {login: {name, date}} }
+        if (Array.isArray(parsed)) {
+          // Stary format: tylko tablica użytkowników
+          setUsers(parsed);
+          localStorage.setItem("bl_users", JSON.stringify(parsed));
+        } else if (parsed && Array.isArray(parsed.users) && typeof parsed.orders === 'object') {
+          setUsers(parsed.users);
+          localStorage.setItem("bl_users", JSON.stringify(parsed.users));
+          // Przywróć zamówienia dla każdego użytkownika
+          Object.entries(parsed.orders).forEach(([login, orders]) => {
+            localStorage.setItem(`orders_${login}`, JSON.stringify(orders));
+          });
+          // Przywróć wysłane zamówienia dla każdego użytkownika (jeśli są)
+          if (parsed.sentOrders && typeof parsed.sentOrders === 'object') {
+            Object.entries(parsed.sentOrders).forEach(([login, sent]) => {
+              localStorage.setItem(`sent_orders_${login}`, JSON.stringify(sent));
+            });
+          }
+          // Przywróć info o pliku dla każdego użytkownika (jeśli są)
+          if (parsed.fileInfo && typeof parsed.fileInfo === 'object') {
+            Object.entries(parsed.fileInfo).forEach(([login, info]) => {
+              localStorage.setItem(`orders_fileinfo_${login}`, JSON.stringify(info));
+            });
+          }
         }
       } catch (err) {
         alert("Błąd importu pliku użytkowników!");
@@ -367,7 +493,7 @@ export default function Home() {
       <Box sx={{ width: '100%', background: '#fd6615', py: 1.5, display: 'flex', alignItems: 'center', mb: 4, position: 'relative' }}>
         <img src="/logo.png" alt="Logo firmy" style={{ height: 32, marginLeft: 32, marginRight: 20, background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px #0002' }} />
         <Typography sx={{ color: '#fff', fontSize: 22, fontWeight: 700, letterSpacing: 1 }}>
-          Import zamówień TEMU do BaseLinker
+          vSprint - TEMU integrator
         </Typography>
         <Box sx={{ position: 'absolute', right: 32, top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: 2 }}>
           <Button variant="outlined" component="label" sx={{ borderColor: '#fd6615', color: '#fd6615', fontWeight: 700, fontSize: 16, borderRadius: 2, background: '#fff' }}>
@@ -380,7 +506,7 @@ export default function Home() {
       </Box>
       {/* PRZYCISKI NAWIGACYJNE */}
       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2, mb: 2 }}>
-        <Button variant="contained" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 700, borderRadius: 2 }} onClick={() => router.push('/')}>Strona główna</Button>
+        <Button variant="contained" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 700, borderRadius: 2 }} onClick={() => router.push('/')}>Import TEMU - Base</Button>
         <Button variant="contained" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 700, borderRadius: 2 }} onClick={() => router.push('/dashboard')}>Dashboard</Button>
         <Button variant="contained" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 700, borderRadius: 2 }} onClick={() => router.push('/faq')}>FAQ</Button>
       </Box>
@@ -440,14 +566,14 @@ export default function Home() {
                       </TableHead>
                       <TableBody>
                         {users.filter(u => u.login === selectedUser).map(u => (
-                          <TableRow key={u.login} sx={{ background: '#e6f7ff', fontWeight: 600 }}>
+                          <TableRow key={u.login} sx={{ background: '#fff7e0', fontWeight: 600 }}>
                             <TableCell>{u.login}</TableCell>
                             <TableCell sx={{ fontSize: 12, wordBreak: 'break-all' }} title={u.token}>
                               {u.token.length > 16 ? `${u.token.slice(0, 8)}...${u.token.slice(-6)}` : u.token}
                             </TableCell>
                             <TableCell>
-                              <Button variant="outlined" size="small" onClick={() => handleUserEdit(u.login)} sx={{ mr: 1 }}>Edytuj</Button>
-                              <Button variant="outlined" size="small" color="error" onClick={() => handleUserDelete(u.login)}>Usuń</Button>
+                              <Button variant="outlined" size="small" onClick={() => handleUserEdit(u.login)} sx={{ mr: 1, bgcolor: '#fff', color: '#fd6615', fontWeight: 700, borderColor: '#fd6615', '&:hover': { bgcolor: '#ffe0d6', borderColor: '#fd6615', color: '#fd6615' } }}>Edytuj</Button>
+                              <Button variant="outlined" size="small" onClick={() => handleUserDelete(u.login)} sx={{ bgcolor: '#fff', color: '#fd6615', fontWeight: 700, borderColor: '#fd6615', '&:hover': { bgcolor: '#ffe0d6', borderColor: '#fd6615', color: '#fd6615' } }}>Usuń</Button>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -456,12 +582,11 @@ export default function Home() {
                   </TableContainer>
                 )}
                 <Box sx={{ mb: 2 }}>
-                  <Typography fontWeight={600} mb={1}>Plik Excel z zamówieniami:</Typography>
+                  <Typography fontWeight={600} mb={1}>Wgraj plik excel z zamówieniami</Typography>
                   <Button variant="contained" component="label" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 600 }}>
                     Wybierz plik
-                    <input type="file" accept=".xlsx,.xls" onChange={handleFileChange} hidden />
+                    <input type="file" accept=".xlsx,.xls" onChange={handleFileChange} hidden ref={labelInputRef} />
                   </Button>
-                  {file && <Typography variant="body2" sx={{ ml: 2, display: 'inline' }}>{file.name}</Typography>}
                 </Box>
                 <FormControl fullWidth sx={{ mb: 2 }}>
                   <InputLabel id="status-label">Status docelowy w BaseLinker</InputLabel>
@@ -540,13 +665,64 @@ export default function Home() {
                   </TableContainer>
                 </Paper>
               )}
+              {lastFileInfo && (
+                <Box sx={{ mb: 2, p: 1, background: '#fff7e0', borderRadius: 2, fontSize: 15 }}>
+                  Zamówienia na podstawie pliku: <b>{lastFileInfo.name}</b> | Data wczytania: <b>{new Date(lastFileInfo.date).toLocaleString()}</b>
+                </Box>
+              )}
             </Box>
           </Box>
         </form>
+        <Dialog open={confirmOpen} onClose={handleConfirmNo}>
+          <DialogTitle>Potwierdzenie wysyłki</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Czy na pewno chcesz wysłać wybrane zamówienia do BaseLinker?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleConfirmNo} color="secondary">Nie</Button>
+            <Button onClick={handleConfirmYes} color="primary" autoFocus>Tak</Button>
+          </DialogActions>
+        </Dialog>
+        {/* Dialog potwierdzający dodanie użytkownika */}
+        <Dialog open={userAddedDialogOpen} onClose={() => setUserAddedDialogOpen(false)}>
+          <DialogTitle>Dodano użytkownika</DialogTitle>
+          <DialogContent>
+            <DialogContentText>Użytkownik został dodany.</DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setUserAddedDialogOpen(false)} color="primary" autoFocus>OK</Button>
+          </DialogActions>
+        </Dialog>
+        {/* Dialog potwierdzający usunięcie użytkownika */}
+        <Dialog open={confirmDeleteDialogOpen} onClose={cancelDeleteUser}>
+          <DialogTitle>Potwierdzenie usunięcia</DialogTitle>
+          <DialogContent>
+            <DialogContentText>Czy na pewno usunąć użytkownika?</DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={cancelDeleteUser} color="secondary">Nie</Button>
+            <Button onClick={confirmDeleteUser} color="primary" autoFocus>Tak</Button>
+          </DialogActions>
+        </Dialog>
+        {/* Dialog potwierdzający import pliku zamówień */}
+        <Dialog open={importFileDialogOpen} onClose={() => setImportFileDialogOpen(false)}>
+          <DialogTitle>Import zakończony</DialogTitle>
+          <DialogContent>
+            <DialogContentText>Import pliku excel z zamówieniami wykonany z sukcesem.</DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setImportFileDialogOpen(false)} color="primary" autoFocus>OK</Button>
+          </DialogActions>
+        </Dialog>
       </Box>
       <Box sx={{ width: '100%', textAlign: 'center', mt: 6, py: 2, color: '#888', fontSize: 15 }}>
         <div>vSprint – narzędzie dla sprzedawców Allegro | powered by AI</div>
-        <div><a href="https://www.vsprint.pl" target="_blank" rel="noopener noreferrer" style={{ color: '#fd6615', textDecoration: 'none', fontWeight: 500 }}>www.vsprint.pl</a></div>
+        <div>
+          <a href="https://www.vsprint.pl" target="_blank" rel="noopener noreferrer" style={{ color: '#fd6615', textDecoration: 'none', fontWeight: 500 }}>www.vsprint.pl</a>
+          <span style={{ marginLeft: 12, color: '#888', fontWeight: 400 }}>| wersja beta 1.0.0.</span>
+        </div>
       </Box>
     </>
   );
