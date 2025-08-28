@@ -87,10 +87,13 @@ export default function Home() {
         // Statystyki
         let sum = 0;
         for (const row of rows) {
-          const base = parseFloat((row as any)["base price total"] || 0);
+          // NOWA LOGIKA: Sprawdź najpierw activity goods base price (cena promocyjna)
+          const activity_goods_base_price = parseFloat((row as any)["activity goods base price"] || 0);
+          const base = activity_goods_base_price > 0 ? activity_goods_base_price : parseFloat((row as any)["base price total"] || 0);
           const tax = parseFloat((row as any)["product tax total"] || 0);
           const shiptax = parseFloat((row as any)["shipping tax total"] || 0);
-          sum += base + tax + shiptax;
+          const shipping_cost = parseFloat((row as any)["shipping cost"] || 0);
+          sum += base + tax + shiptax + shipping_cost;
         }
         setStats({sum, count: rows.length});
         // Statystyki produktów
@@ -165,10 +168,13 @@ export default function Home() {
         // Statystyki
         let sum = 0;
         for (const row of rows) {
-          const base = parseFloat((row as any)["base price total"] || 0);
+          // NOWA LOGIKA: Sprawdź najpierw activity goods base price (cena promocyjna)
+          const activity_goods_base_price = parseFloat((row as any)["activity goods base price"] || 0);
+          const base = activity_goods_base_price > 0 ? activity_goods_base_price : parseFloat((row as any)["base price total"] || 0);
           const tax = parseFloat((row as any)["product tax total"] || 0);
           const shiptax = parseFloat((row as any)["shipping tax total"] || 0);
-          sum += base + tax + shiptax;
+          const shipping_cost = parseFloat((row as any)["shipping cost"] || 0);
+          sum += base + tax + shiptax + shipping_cost;
         }
         setStats({sum, count: rows.length});
         // Statystyki produktów
@@ -261,39 +267,75 @@ export default function Home() {
     setSelectedOrders([]); // NIE zaznaczaj żadnych zamówień po wgraniu pliku
     setStats({sum: 0, count: 0});
     if (f) {
-      const data = await f.arrayBuffer();
-      const workbook = XLSX.read(data, { type: "array" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      let rows = XLSX.utils.sheet_to_json(sheet);
-      // NIE filtruj zamówień, które już były wysłane
-      setOrders(rows);
-      // NIE zaznaczaj żadnych zamówień domyślnie
-      if (selectedUser) {
-        localStorage.setItem(`orders_${selectedUser}`, JSON.stringify(rows));
-        // Zapisz info o pliku i dacie
-        const info = { name: f.name, date: new Date().toISOString() };
-        localStorage.setItem(`orders_fileinfo_${selectedUser}`, JSON.stringify(info));
-        setLastFileInfo(info);
+      let rows: any[] = [];
+      
+      // Sprawdź rozszerzenie pliku
+      const fileName = f.name.toLowerCase();
+      if (fileName.endsWith('.csv')) {
+        // Obsługa pliku CSV
+        const text = await f.text();
+        try {
+          const Papa = (await import('papaparse')).default;
+          Papa.parse(text, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+              rows = results.data as any[];
+              processFileData(rows, f);
+            },
+            error: (error) => {
+              console.error('Błąd parsowania CSV:', error);
+              setMessage('Błąd parsowania pliku CSV');
+            }
+          });
+        } catch (error) {
+          console.error('Błąd importu papaparse:', error);
+          setMessage('Błąd parsowania pliku CSV');
+        }
+      } else {
+        // Obsługa pliku Excel (XLSX/XLS)
+        const data = await f.arrayBuffer();
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(sheet);
+        processFileData(rows, f);
       }
-      let sum = 0;
-      for (const row of rows) {
-        const base = parseFloat((row as any)["base price total"] || 0);
-        const tax = parseFloat((row as any)["product tax total"] || 0);
-        const shiptax = parseFloat((row as any)["shipping tax total"] || 0);
-        sum += base + tax + shiptax;
-      }
-      setStats({sum, count: rows.length});
-      const productMap: Record<string, number> = {};
-      for (const row of rows) {
-        const name = (row as any)["product name"] || "Brak nazwy";
-        const qty = parseInt((row as any)["quantity purchased"] || 1);
-        productMap[name] = (productMap[name] || 0) + qty;
-      }
-      setProductStats(Object.entries(productMap).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count));
-      setImportFileDialogOpen(true);
-      // Resetuj input pliku, aby można było ponownie wybrać ten sam plik
-      if (labelInputRef.current) labelInputRef.current.value = "";
     }
+  };
+
+  // Funkcja pomocnicza do przetwarzania danych z pliku
+  const processFileData = (rows: any[], f: File) => {
+    // NIE filtruj zamówień, które już były wysłane
+    setOrders(rows);
+    // NIE zaznaczaj żadnych zamówień domyślnie
+    if (selectedUser) {
+      localStorage.setItem(`orders_${selectedUser}`, JSON.stringify(rows));
+      // Zapisz info o pliku i dacie
+      const info = { name: f.name, date: new Date().toISOString() };
+      localStorage.setItem(`orders_fileinfo_${selectedUser}`, JSON.stringify(info));
+      setLastFileInfo(info);
+    }
+    let sum = 0;
+    for (const row of rows) {
+      // NOWA LOGIKA: Sprawdź najpierw activity goods base price (cena promocyjna)
+      const activity_goods_base_price = parseFloat((row as any)["activity goods base price"] || 0);
+      const base = activity_goods_base_price > 0 ? activity_goods_base_price : parseFloat((row as any)["base price total"] || 0);
+      const tax = parseFloat((row as any)["product tax total"] || 0);
+      const shiptax = parseFloat((row as any)["shipping tax total"] || 0);
+      const shipping_cost = parseFloat((row as any)["shipping cost"] || 0);
+      sum += base + tax + shiptax + shipping_cost;
+    }
+    setStats({sum, count: rows.length});
+    const productMap: Record<string, number> = {};
+    for (const row of rows) {
+      const name = (row as any)["product name"] || "Brak nazwy";
+      const qty = parseInt((row as any)["quantity purchased"] || 1);
+      productMap[name] = (productMap[name] || 0) + qty;
+    }
+    setProductStats(Object.entries(productMap).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count));
+    setImportFileDialogOpen(true);
+    // Resetuj input pliku, aby można było ponownie wybrać ten sam plik
+    if (labelInputRef.current) labelInputRef.current.value = "";
   };
 
   const handleOrderCheck = (idx: number) => {
@@ -582,10 +624,10 @@ export default function Home() {
                   </TableContainer>
                 )}
                 <Box sx={{ mb: 2 }}>
-                  <Typography fontWeight={600} mb={1}>Wgraj plik excel z zamówieniami</Typography>
+                  <Typography fontWeight={600} mb={1}>Wgraj plik Excel lub CSV z zamówieniami</Typography>
                   <Button variant="contained" component="label" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 600 }}>
                     Wybierz plik
-                    <input type="file" accept=".xlsx,.xls" onChange={handleFileChange} hidden ref={labelInputRef} />
+                    <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} hidden ref={labelInputRef} />
                   </Button>
                 </Box>
                 <FormControl fullWidth sx={{ mb: 2 }}>

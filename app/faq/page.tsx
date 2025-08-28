@@ -105,6 +105,84 @@ export default function FAQPage() {
             <li><b>Jak działa dashboard?</b> – Pokazuje statystyki, wykresy, TOP produkty, miasta i szczegóły zamówień na podstawie zaimportowanych danych.</li>
           </ul>
           <Typography variant="body2" color="text.secondary">W razie pytań lub problemów skontaktuj się z autorem aplikacji.</Typography>
+          
+          <Typography variant="h6" fontWeight={600} mb={2} color="#fd6615" sx={{ mt: 4 }}>📊 Analiza finansowa TEMU - szczegółowe wyjaśnienie</Typography>
+          
+          <Typography variant="h6" fontWeight={600} mb={1} color="#388e3c">💰 Wpływy sprzedawcy</Typography>
+          <Typography mb={2} sx={{ pl: 2 }}>
+            <b>Co to jest:</b> Kwota, którą sprzedawca faktycznie otrzymuje na swoje konto po sprzedaży produktu na TEMU.<br/>
+            <b>Skąd się bierze:</b> Suma trzech wartości z pliku TEMU:<br/>
+            • <b>Base Price Total</b> - cena bazowa produktu<br/>
+            • <b>Product Tax Total</b> - podatek od produktu<br/>
+            • <b>Shipping Tax Total</b> - podatek od wysyłki<br/>
+            <b>Wzór:</b> Wpływy = Base Price Total + Product Tax Total + Shipping Tax Total
+          </Typography>
+          
+          <Typography variant="h6" fontWeight={600} mb={1} color="#f57c00">💳 Klient zapłacił</Typography>
+          <Typography mb={2} sx={{ pl: 2 }}>
+            <b>Co to jest:</b> Całkowita kwota, którą klient zapłacił za zamówienie (łącznie z kuponami TEMU).<br/>
+            <b>Skąd się bierze:</b> Suma czterech wartości:<br/>
+            • <b>Retail Price Total</b> - cena detaliczna produktu<br/>
+            • <b>Product Tax Total</b> - podatek od produktu<br/>
+            • <b>Shipping Tax Total</b> - podatek od wysyłki<br/>
+            • <b>Discount from TEMU</b> - kupon/dopłata TEMU (może być ujemny)<br/>
+            <b>Wzór:</b> Klient zapłacił = Retail Price Total + Product Tax Total + Shipping Tax Total + Discount from TEMU
+          </Typography>
+          
+          <Typography variant="h6" fontWeight={600} mb={1} color="#d81b60">📈 Prowizja TEMU</Typography>
+          <Typography mb={2} sx={{ pl: 2 }}>
+            <b>Co to jest:</b> Kwota, którą TEMU pobiera jako prowizję za pośrednictwo w sprzedaży.<br/>
+            <b>Skąd się bierze:</b> Różnica między tym, co zapłacił klient, a tym, co dostaje sprzedawca.<br/>
+            <b>Wzór:</b> Prowizja TEMU = Klient zapłacił - Wpływy sprzedawcy<br/>
+            <b>Uwaga:</b> Może być ujemna, gdy TEMU dopłaca do sprzedaży (np. przez kupony)
+          </Typography>
+          
+          <Typography variant="h6" fontWeight={600} mb={1} color="#e034d2">🎫 Dopłaty TEMU (kupony)</Typography>
+          <Typography mb={2} sx={{ pl: 2 }}>
+            <b>Co to jest:</b> Kwota, którą TEMU dopłaca do zamówienia w formie kuponów lub promocji.<br/>
+            <b>Skąd się bierze:</b> Wartość z pola "Discount from TEMU" (zawsze ujemna w pliku).<br/>
+            <b>Przykład:</b> Jeśli klient otrzymał kupon -5 zł, to TEMU dopłaca 5 zł do zamówienia.<br/>
+            <b>Wpływ na zysk:</b> Im większe dopłaty TEMU, tym mniejsza prowizja TEMU i większy zysk sprzedawcy.
+          </Typography>
+          
+          <Typography variant="h6" fontWeight={600} mb={1} color="#d32f2f">❌ Anulowane zamówienia</Typography>
+          <Typography mb={2} sx={{ pl: 2 }}>
+            <b>Co to jest:</b> Zamówienia ze statusem "Canceled" w pliku TEMU.<br/>
+            <b>Wpływ na analizę:</b> Anulowane zamówienia są wykluczane z wszystkich obliczeń finansowych.<br/>
+            <b>Dlaczego:</b> Nie generują żadnych przychodów ani kosztów dla sprzedawcy.
+          </Typography>
+          
+          <Typography variant="h6" fontWeight={600} mb={1} color="#1976d2">📊 Wykres sezonowości</Typography>
+          <Typography mb={2} sx={{ pl: 2 }}>
+            <b>Co pokazuje:</b> Trendy sprzedaży w czasie (dziennie, tygodniowo, miesięcznie).<br/>
+            <b>Możliwości:</b> Możesz zaznaczyć/odznaczyć poszczególne linie:<br/>
+            • <span style={{color: '#fd6615'}}>Zamówienia</span> - liczba zamówień w czasie<br/>
+            • <span style={{color: '#388e3c'}}>Wpływy sprzedawcy</span> - przychody w czasie<br/>
+            • <span style={{color: '#f57c00'}}>Klient zapłacił</span> - płatności klientów w czasie<br/>
+            • <span style={{color: '#d81b60'}}>Prowizja TEMU</span> - prowizje TEMU w czasie<br/>
+            <b>Funkcje:</b> Przyciski "Pokaż wszystko" i "Ukryj wszystko" dla szybkiego zarządzania.
+          </Typography>
+          
+          <Typography variant="h6" fontWeight={600} mb={1} color="#f57f17">💡 Przykład praktyczny</Typography>
+          <Typography mb={2} sx={{ pl: 2 }}>
+            <b>Scenariusz:</b> Produkt o cenie bazowej 20 zł, cenie detalicznej 25 zł, podatkach 5 zł, kuponie TEMU -3 zł<br/>
+            <b>Obliczenia:</b><br/>
+            • Wpływy sprzedawcy = 20 + 5 = 25 zł<br/>
+            • Klient zapłacił = 25 + 5 + (-3) = 27 zł<br/>
+            • Prowizja TEMU = 27 - 25 = 2 zł<br/>
+            • Dopłata TEMU = 3 zł (wartość bezwzględna z -3)<br/>
+            <b>Wynik:</b> Sprzedawca zarabia 25 zł, klient płaci 27 zł, TEMU pobiera prowizję 2 zł i dopłaca 3 zł.
+          </Typography>
+          
+          <Typography variant="h6" fontWeight={600} mb={1} color="#1976d2">📈 Dodatkowe funkcje dashboardu</Typography>
+          <Typography mb={2} sx={{ pl: 2 }}>
+            <b>Kafelki statystyk:</b> Szybki przegląd najważniejszych wskaźników finansowych.<br/>
+            <b>Szczegółowa tabela:</b> Analiza każdego zamówienia z podziałem na wpływy, płatności klienta i prowizje.<br/>
+            <b>TOP produkty:</b> Lista najczęściej sprzedawanych produktów z liczbą sztuk.<br/>
+            <b>Statystyki dodatkowe:</b> Zamówienia z/bez trackingu, statusy wysyłki, średnie wartości.<br/>
+            <b>Zakresy czasowe:</b> Możliwość analizy różnych okresów (dzisiaj, ostatnie 7/30 dni, miesiąc, rok).<br/>
+            <b>Zapisywanie ustawień:</b> Twoje preferencje wykresu są automatycznie zapisywane.
+          </Typography>
         </Paper>
       </Box>
       <Box sx={{ width: '100%', textAlign: 'center', mt: 6, py: 2, color: '#888', fontSize: 15 }}>

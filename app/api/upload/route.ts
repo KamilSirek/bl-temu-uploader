@@ -86,12 +86,30 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Nieprawidłowy format zamówień" }, { status: 400 });
       }
     } else if (file) {
-      // Odczyt pliku Excel
-      const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: "array" });
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      rows = XLSX.utils.sheet_to_json(sheet);
+      // Sprawdź rozszerzenie pliku
+      const fileName = file.name.toLowerCase();
+      if (fileName.endsWith('.csv')) {
+        // Odczyt pliku CSV
+        const text = await file.text();
+        try {
+          const Papa = (await import('papaparse')).default;
+          const result = Papa.parse(text, {
+            header: true,
+            skipEmptyLines: true,
+          });
+          rows = result.data as any[];
+        } catch (error) {
+          console.error('Błąd parsowania CSV:', error);
+          return NextResponse.json({ error: "Błąd parsowania pliku CSV" }, { status: 400 });
+        }
+      } else {
+        // Odczyt pliku Excel
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        rows = XLSX.utils.sheet_to_json(sheet);
+      }
     } else {
       return NextResponse.json({ error: "Brak wymaganych danych" }, { status: 400 });
     }
@@ -108,10 +126,34 @@ export async function POST(req: NextRequest) {
       const order_id = safeValue((row as any)["order id"]);
       if (!order_id) { skipped++; logDetails.push({order_id, action: 'brak order id'}); continue; }
       const email = safeValue((row as any)["email"]);
+      // POPRAWIONA LOGIKA CENY DO BASELINKER
+      const activity_goods_base_price = parseFloatSafe((row as any)["activity goods base price"]);
       const base_price_total = parseFloatSafe((row as any)["base price total"]);
+      const retail_price_total = parseFloatSafe((row as any)["retail price total"]);
       const product_tax_total = parseFloatSafe((row as any)["product tax total"]);
       const shipping_tax_total = parseFloatSafe((row as any)["shipping tax total"]);
-      const price_brutto = base_price_total + product_tax_total + shipping_tax_total;
+      const shipping_cost = parseFloatSafe((row as any)["shipping cost"]);
+      const discount_from_temu = parseFloatSafe((row as any)["discount form TEMU"]);
+      
+      // Ustal cenę bazową (promocyjna lub standardowa)
+      const base_price = activity_goods_base_price > 0 ? activity_goods_base_price : base_price_total;
+      
+      // Klient zapłacił (cena detaliczna + podatki + shipping cost)
+      const customer_paid = retail_price_total + product_tax_total + shipping_tax_total + shipping_cost;
+      
+      // Sprawdź czy TEMU użyło kuponu i czy cena po kuponie jest mniejsza niż cena bazowa
+      const price_after_discount = retail_price_total - discount_from_temu;
+      const should_use_base_price = price_after_discount < base_price;
+      
+      // Ustal cenę brutto do BaseLinker (TYLKO produkt + podatki, BEZ shipping cost)
+      let price_brutto;
+      if (should_use_base_price) {
+        // Użyj ceny bazowej + podatki (TEMU wystawi fakturę kosztową)
+        price_brutto = base_price + product_tax_total + shipping_tax_total;
+      } else {
+        // Użyj ceny detalicznej + podatki (bez shipping cost)
+        price_brutto = retail_price_total + product_tax_total + shipping_tax_total;
+      }
       const excelDate = new Date(); // Możesz dodać pole z datą z pliku, jeśli jest
       // Sprawdź duplikat po kilku polach
       const isDuplicate = existingOrders.some(order => {
@@ -136,7 +178,6 @@ export async function POST(req: NextRequest) {
       const country = safeValue((row as any)["ship country"]);
       const product_name = safeValue((row as any)["product name"]);
       const quantity = (row as any)["quantity purchased"] ? parseInt((row as any)["quantity purchased"]) : 1;
-      const shipping_cost = parseFloatSafe((row as any)["shipping cost"]);
       const delivery_price = shipping_cost;
       const tracking_number = safeValue((row as any)["tracking number"]);
       const carrier = safeValue((row as any)["carrier"]);

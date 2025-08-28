@@ -6,6 +6,9 @@ import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import PersonIcon from "@mui/icons-material/Person";
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
+import DiscountIcon from "@mui/icons-material/Discount";
+import CancelIcon from "@mui/icons-material/Cancel";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
@@ -29,6 +32,7 @@ const polishMonths: { [key: string]: string } = {
   "lis.": "11",
   "gru.": "12"
 };
+
 function parsePolishDate(dateStr: string) {
   if (!dateStr) return null;
   const match = dateStr.match(/(\d{1,2}) ([a-ząćęłńóśźż.]+) (\d{4}), (\d{2}:\d{2})/i);
@@ -42,17 +46,45 @@ function parsePolishDate(dateStr: string) {
   return dayjs(dateStr); // fallback
 }
 
+// Funkcja pomocnicza do parsowania kwot z różnych formatów
+function parseAmount(amount: any): number {
+  if (!amount) return 0;
+  const str = String(amount).replace(/[^\d.,-]/g, '').replace(',', '.');
+  return parseFloat(str) || 0;
+}
+
+// NOWA FUNKCJA: Parsowanie ceny z uwzględnieniem promocji
+function parsePriceWithPromotion(row: any): number {
+  // Sprawdź najpierw activity goods base price (cena promocyjna)
+  const activityGoodsBasePrice = parseAmount(row["activity goods base price"]);
+  // Jeśli jest cena promocyjna, użyj jej
+  if (activityGoodsBasePrice > 0) {
+    return activityGoodsBasePrice;
+  }
+  // W przeciwnym razie użyj standardowej ceny
+  return parseAmount(row["base price total"]);
+}
+
 export default function Dashboard() {
   const [users, setUsers] = useState<{login: string, token: string}[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [orders, setOrders] = useState<any[]>([]);
   const [aggregation, setAggregation] = useState("day");
   const [dateRange, setDateRange] = useState("30d");
+  
+  // Stan dla zaznaczonych elementów wykresu
+  const [chartElements, setChartElements] = useState({
+    orders: true,
+    revenue: true,
+    customer: true,
+    commission: true
+  });
+  
   // Ustal najnowszą datę z zamówień:
-const allDates = orders
-  .map(row => parsePolishDate(row["purchase date"]))
-  .filter(Boolean)
-  .map(date => date!.format("YYYY-MM-DD"));
+  const allDates = orders
+    .map(row => parsePolishDate(row["purchase date"]))
+    .filter(Boolean)
+    .map(date => date!.format("YYYY-MM-DD"));
   const newestDate = allDates.length > 0 ? allDates.sort().reverse()[0] : dayjs().format("YYYY-MM-DD");
   const [selectedDay, setSelectedDay] = useState(newestDate);
   useEffect(() => {
@@ -60,6 +92,7 @@ const allDates = orders
   }, [orders.length]);
 
   const [summaryRange, setSummaryRange] = useState("30d");
+  
   function getSummaryRange(range: string) {
     const today = dayjs();
     switch (range) {
@@ -81,6 +114,7 @@ const allDates = orders
         return [today.subtract(29, "day").startOf("day"), today.endOf("day")];
     }
   }
+  
   const [summaryFrom, summaryTo] = getSummaryRange(summaryRange);
   const filteredOrdersByRange = orders.filter(row => {
     const date = parsePolishDate(row["purchase date"]);
@@ -94,6 +128,12 @@ const allDates = orders
   useEffect(() => {
     const saved = localStorage.getItem("bl_users");
     if (saved) setUsers(JSON.parse(saved));
+    
+    // Wczytaj zapisane ustawienia wykresu
+    const savedChartElements = localStorage.getItem("chart_elements");
+    if (savedChartElements) {
+      setChartElements(JSON.parse(savedChartElements));
+    }
   }, []);
 
   useEffect(() => {
@@ -109,6 +149,11 @@ const allDates = orders
       localStorage.setItem("bl_users", JSON.stringify(users));
     }
   }, [users]);
+
+  // Zapisz ustawienia wykresu w localStorage
+  useEffect(() => {
+    localStorage.setItem("chart_elements", JSON.stringify(chartElements));
+  }, [chartElements]);
 
   // Funkcja pomocnicza do zakresów dat
   function getDateRange(range: string) {
@@ -143,8 +188,61 @@ const allDates = orders
     return date && date.format("YYYY-MM-DD") === selectedDay;
   });
 
+  // NOWA LOGIKA BIZNESOWA TEMU
+  const temuStats = filteredOrdersByRange
+    .filter(row => row["order status"] !== "Canceled") // Wykluczamy anulowane zamówienia
+    .reduce((acc, row) => {
+    // Wpływy sprzedawcy (co dostaje na konto)
+    // Użyj ceny z uwzględnieniem promocji + product tax total + shipping tax total + shipping cost
+    const basePriceTotal = parsePriceWithPromotion(row);
+    const productTaxTotal = parseAmount(row["product tax total"]);
+    const shippingTaxTotal = parseAmount(row["shipping tax total"]);
+    const shippingCost = parseAmount(row["shipping cost"]);
+    
+    // ROZBICIE WPŁYWÓW SPRZEDAWCY NA KOMPONENTY
+    const sellerRevenueWithoutShipping = basePriceTotal + productTaxTotal + shippingTaxTotal;
+    const sellerShippingCost = shippingCost;
+    const sellerRevenueTotal = sellerRevenueWithoutShipping + sellerShippingCost;
+    
+    // Klient zapłacił (cena detaliczna + podatki + shipping cost + kupon TEMU)
+    const retailPriceTotal = parseAmount(row["retail price total"]);
+    const discountFromTemu = parseAmount(row["discount form TEMU"]);
+    const customerPaid = retailPriceTotal + productTaxTotal + shippingTaxTotal + shippingCost + discountFromTemu;
+    
+    // Prowizja TEMU - różnica między tym co zapłacił klient a tym co dostaje sprzedawca
+    const temuCommission = customerPaid - sellerRevenueTotal;
+    
+    return {
+      totalOrders: acc.totalOrders + 1,
+      sellerRevenueWithoutShipping: acc.sellerRevenueWithoutShipping + sellerRevenueWithoutShipping,
+      sellerShippingCost: acc.sellerShippingCost + sellerShippingCost,
+      sellerRevenueTotal: acc.sellerRevenueTotal + sellerRevenueTotal,
+      customerPaid: acc.customerPaid + customerPaid,
+      temuCommission: acc.temuCommission + temuCommission,
+      totalDiscounts: acc.totalDiscounts + Math.abs(discountFromTemu),
+      ordersWithDiscounts: acc.ordersWithDiscounts + (discountFromTemu < 0 ? 1 : 0),
+      // Dodajemy nowe statystyki
+      ordersWhereTemuPays: acc.ordersWhereTemuPays + (customerPaid < sellerRevenueTotal ? 1 : 0),
+      totalTemuSubsidy: acc.totalTemuSubsidy + Math.max(0, sellerRevenueTotal - customerPaid)
+    };
+  }, {
+    totalOrders: 0,
+    sellerRevenueWithoutShipping: 0,
+    sellerShippingCost: 0,
+    sellerRevenueTotal: 0,
+    customerPaid: 0,
+    temuCommission: 0,
+    totalDiscounts: 0,
+    ordersWithDiscounts: 0,
+    ordersWhereTemuPays: 0,
+    totalTemuSubsidy: 0
+  });
+
+  // Liczba anulowanych zamówień
+  const canceledOrders = filteredOrdersByRange.filter(row => row["order status"] === "Canceled").length;
+
   // Generowanie danych do wykresu wg agregacji
-  let chartData: { label: string, Zamówienia: number, Obrót: number }[] = [];
+  let chartData: { label: string, Zamówienia: number, Wpływy: number, Klient: number, Prowizja: number }[] = [];
   if (aggregation === "day") {
     const daysArr = [];
     let d = summaryFrom;
@@ -154,61 +252,130 @@ const allDates = orders
     }
     chartData = daysArr.map(day => {
       const label = day.format("YYYY-MM-DD");
-      const ordersForDay = filteredOrdersByRange.filter(row => {
+      const ordersForDay = filteredOrdersByRange
+        .filter(row => row["order status"] !== "Canceled") // Wykluczamy anulowane
+        .filter(row => {
         const parsedDate = parsePolishDate(row["purchase date"]);
         return parsedDate && parsedDate.format("YYYY-MM-DD") === label;
       });
-      const count = ordersForDay.length;
-      const obrot = ordersForDay.reduce((acc, row) => {
-        const base = parseFloat(row["base price total"] || 0);
-        const tax = parseFloat(row["product tax total"] || 0);
-        const shiptax = parseFloat(row["shipping tax total"] || 0);
-        const delivery = parseFloat(row["shipping cost"] || 0);
-        return acc + base + tax + shiptax + delivery;
-      }, 0);
-      return { label, Zamówienia: count, Obrót: Math.round(obrot * 100) / 100 };
+      
+      const dayStats = ordersForDay.reduce((acc, row) => {
+        const basePriceTotal = parsePriceWithPromotion(row);
+        const productTaxTotal = parseAmount(row["product tax total"]);
+        const shippingTaxTotal = parseAmount(row["shipping tax total"]);
+        const shippingCost = parseAmount(row["shipping cost"]);
+        
+        // ROZBICIE WPŁYWÓW SPRZEDAWCY NA KOMPONENTY
+        const sellerRevenueWithoutShipping = basePriceTotal + productTaxTotal + shippingTaxTotal;
+        const sellerShippingCost = shippingCost;
+        const sellerRevenueTotal = sellerRevenueWithoutShipping + sellerShippingCost;
+        
+        const retailPriceTotal = parseAmount(row["retail price total"]);
+        const discountFromTemu = parseAmount(row["discount form TEMU"]);
+        const customerPaid = retailPriceTotal + productTaxTotal + shippingTaxTotal + shippingCost + discountFromTemu;
+        const temuCommission = customerPaid - sellerRevenueTotal;
+        
+        return {
+          count: acc.count + 1,
+          sellerRevenueWithoutShipping: acc.sellerRevenueWithoutShipping + sellerRevenueWithoutShipping,
+          sellerShippingCost: acc.sellerShippingCost + sellerShippingCost,
+          sellerRevenueTotal: acc.sellerRevenueTotal + sellerRevenueTotal,
+          customerPaid: acc.customerPaid + customerPaid,
+          temuCommission: acc.temuCommission + temuCommission
+        };
+      }, { count: 0, sellerRevenueWithoutShipping: 0, sellerShippingCost: 0, sellerRevenueTotal: 0, customerPaid: 0, temuCommission: 0 });
+      
+      return { 
+        label, 
+        Zamówienia: dayStats.count, 
+        Wpływy: Math.round(dayStats.sellerRevenueTotal * 100) / 100,
+        Klient: Math.round(dayStats.customerPaid * 100) / 100,
+        Prowizja: Math.round(dayStats.temuCommission * 100) / 100
+      };
     });
   } else if (aggregation === "week") {
-    const weekMap: Record<string, { Zamówienia: number, Obrót: number }> = {};
-    filteredOrdersByRange.forEach(row => {
+    const weekMap: Record<string, { count: number, sellerRevenueTotal: number, customerPaid: number, temuCommission: number }> = {};
+    filteredOrdersByRange
+      .filter(row => row["order status"] !== "Canceled") // Wykluczamy anulowane
+      .forEach(row => {
       const parsedDate = parsePolishDate(row["purchase date"]);
       if (!parsedDate) return;
-      const week = parsedDate.startOf("week").format("YYYY-[T]WW");
-      if (!weekMap[week]) weekMap[week] = { Zamówienia: 0, Obrót: 0 };
-      weekMap[week].Zamówienia += 1;
-      const base = parseFloat(row["base price total"] || 0);
-      const tax = parseFloat(row["product tax total"] || 0);
-      const shiptax = parseFloat(row["shipping tax total"] || 0);
-      const delivery = parseFloat(row["shipping cost"] || 0);
-      weekMap[week].Obrót += base + tax + shiptax + delivery;
+      const week = parsedDate.startOf("week").format("YYYY-MM-DD");
+      if (!weekMap[week]) weekMap[week] = { count: 0, sellerRevenueTotal: 0, customerPaid: 0, temuCommission: 0 };
+      
+      const basePriceTotal = parsePriceWithPromotion(row);
+      const productTaxTotal = parseAmount(row["product tax total"]);
+      const shippingTaxTotal = parseAmount(row["shipping tax total"]);
+      const shippingCost = parseAmount(row["shipping cost"]);
+      
+      // ROZBICIE WPŁYWÓW SPRZEDAWCY NA KOMPONENTY
+      const sellerRevenueWithoutShipping = basePriceTotal + productTaxTotal + shippingTaxTotal;
+      const sellerShippingCost = shippingCost;
+      const sellerRevenueTotal = sellerRevenueWithoutShipping + sellerShippingCost;
+      
+      const retailPriceTotal = parseAmount(row["retail price total"]);
+      const discountFromTemu = parseAmount(row["discount form TEMU"]);
+      const customerPaid = retailPriceTotal + productTaxTotal + shippingTaxTotal + shippingCost + discountFromTemu;
+      const temuCommission = customerPaid - sellerRevenueTotal;
+      
+      weekMap[week].count += 1;
+      weekMap[week].sellerRevenueTotal += sellerRevenueTotal;
+      weekMap[week].customerPaid += customerPaid;
+      weekMap[week].temuCommission += temuCommission;
     });
-    chartData = Object.entries(weekMap).map(([label, obj]) => ({ label, Zamówienia: obj.Zamówienia, Obrót: Math.round(obj.Obrót * 100) / 100 })).sort((a, b) => a.label.localeCompare(b.label));
+    chartData = Object.entries(weekMap).map(([label, obj]) => {
+      const weekStart = dayjs(label);
+      const weekEnd = weekStart.add(6, 'day');
+      const displayLabel = `${weekStart.format('DD.MM')} - ${weekEnd.format('DD.MM.YYYY')}`;
+      
+      return { 
+        label: displayLabel, 
+        Zamówienia: obj.count, 
+        Wpływy: Math.round(obj.sellerRevenueTotal * 100) / 100,
+        Klient: Math.round(obj.customerPaid * 100) / 100,
+        Prowizja: Math.round(obj.temuCommission * 100) / 100
+      };
+    }).sort((a, b) => a.label.localeCompare(b.label));
   } else if (aggregation === "month") {
-    const monthMap: Record<string, { Zamówienia: number, Obrót: number }> = {};
-    filteredOrdersByRange.forEach(row => {
+    const monthMap: Record<string, { count: number, sellerRevenueTotal: number, customerPaid: number, temuCommission: number }> = {};
+    filteredOrdersByRange
+      .filter(row => row["order status"] !== "Canceled") // Wykluczamy anulowane
+      .forEach(row => {
       const parsedDate = parsePolishDate(row["purchase date"]);
       if (!parsedDate) return;
       const month = parsedDate.format("YYYY-MM");
-      if (!monthMap[month]) monthMap[month] = { Zamówienia: 0, Obrót: 0 };
-      monthMap[month].Zamówienia += 1;
-      const base = parseFloat(row["base price total"] || 0);
-      const tax = parseFloat(row["product tax total"] || 0);
-      const shiptax = parseFloat(row["shipping tax total"] || 0);
-      const delivery = parseFloat(row["shipping cost"] || 0);
-      monthMap[month].Obrót += base + tax + shiptax + delivery;
+      if (!monthMap[month]) monthMap[month] = { count: 0, sellerRevenueTotal: 0, customerPaid: 0, temuCommission: 0 };
+      
+      const basePriceTotal = parsePriceWithPromotion(row);
+      const productTaxTotal = parseAmount(row["product tax total"]);
+      const shippingTaxTotal = parseAmount(row["shipping tax total"]);
+      const shippingCost = parseAmount(row["shipping cost"]);
+      
+      // ROZBICIE WPŁYWÓW SPRZEDAWCY NA KOMPONENTY
+      const sellerRevenueWithoutShipping = basePriceTotal + productTaxTotal + shippingTaxTotal;
+      const sellerShippingCost = shippingCost;
+      const sellerRevenueTotal = sellerRevenueWithoutShipping + sellerShippingCost;
+      
+      const retailPriceTotal = parseAmount(row["retail price total"]);
+      const discountFromTemu = parseAmount(row["discount form TEMU"]);
+      const customerPaid = retailPriceTotal + productTaxTotal + shippingTaxTotal + shippingCost + discountFromTemu;
+      const temuCommission = customerPaid - sellerRevenueTotal;
+      
+      monthMap[month].count += 1;
+      monthMap[month].sellerRevenueTotal += sellerRevenueTotal;
+      monthMap[month].customerPaid += customerPaid;
+      monthMap[month].temuCommission += temuCommission;
     });
-    chartData = Object.entries(monthMap).map(([label, obj]) => ({ label, Zamówienia: obj.Zamówienia, Obrót: Math.round(obj.Obrót * 100) / 100 })).sort((a, b) => a.label.localeCompare(b.label));
+    chartData = Object.entries(monthMap).map(([label, obj]) => ({ 
+      label, 
+      Zamówienia: obj.count, 
+      Wpływy: Math.round(obj.sellerRevenueTotal * 100) / 100,
+      Klient: Math.round(obj.customerPaid * 100) / 100,
+      Prowizja: Math.round(obj.temuCommission * 100) / 100
+    })).sort((a, b) => a.label.localeCompare(b.label));
   }
 
   // Statystyki dla kafelków/statystyk:
-  const sumProducts = filteredOrdersByRange.reduce((acc, row) => {
-    const base = parseFloat(row["base price total"] || 0);
-    const tax = parseFloat(row["product tax total"] || 0);
-    const shiptax = parseFloat(row["shipping tax total"] || 0);
-    return acc + base + tax + shiptax;
-  }, 0);
-  const sumDelivery = filteredOrdersByRange.reduce((acc, row) => acc + parseFloat(row["shipping cost"] || 0), 0);
-  const avgOrder = filteredOrdersByRange.length > 0 ? (sumProducts + sumDelivery) / filteredOrdersByRange.length : 0;
   const uniqueEmails = new Set(filteredOrdersByRange.map(row => (row["email"] || "").toLowerCase().trim())).size;
   const productMap: Record<string, number> = {};
   filteredOrdersByRange.forEach(row => {
@@ -236,31 +403,6 @@ const allDates = orders
     .map(([city, count]) => ({ city, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
-  const totalObrot = filteredOrdersByRange.reduce((acc, row) => {
-    const base = parseFloat(row["base price total"] || 0);
-    const tax = parseFloat(row["product tax total"] || 0);
-    const shiptax = parseFloat(row["shipping tax total"] || 0);
-    const delivery = parseFloat(row["shipping cost"] || 0);
-    return acc + base + tax + shiptax + delivery;
-  }, 0);
-  const productSalesMap: Record<string, { value: number, count: number }> = {};
-  filteredOrdersByRange.forEach(row => {
-    const name = row["product name"] || "Brak nazwy";
-    const qty = parseInt(row["quantity purchased"] || 1);
-    const base = parseFloat(row["base price total"] || 0);
-    const tax = parseFloat(row["product tax total"] || 0);
-    const shiptax = parseFloat(row["shipping tax total"] || 0);
-    const delivery = parseFloat(row["shipping cost"] || 0);
-    const value = base + tax + shiptax + delivery;
-    if (!productSalesMap[name]) productSalesMap[name] = { value: 0, count: 0 };
-    productSalesMap[name].value += value;
-    productSalesMap[name].count += qty;
-  });
-  const productSales = Object.entries(productSalesMap)
-    .map(([name, obj]) => ({ name, value: obj.value, count: obj.count, percent: totalObrot ? (obj.value / totalObrot * 100) : 0 }))
-    .sort((a, b) => b.value - a.value);
-  const [showAllProducts, setShowAllProducts] = useState(false);
-  const visibleProducts = showAllProducts ? productSales : productSales.slice(0, 5);
 
   const router = useRouter();
   const handleLogout = () => {
@@ -327,9 +469,9 @@ const allDates = orders
         <Button variant="contained" sx={{ bgcolor: '#fd6615', color: '#fff', fontWeight: 700, borderRadius: 2 }} onClick={() => router.push('/faq')}>FAQ</Button>
       </Box>
       <Box sx={{ minHeight: '100vh', background: '#f8fafc', py: 6 }}>
-        <Box sx={{ maxWidth: 1000, mx: 'auto', p: { xs: 2, md: 4 }, background: '#fff', borderRadius: 3, boxShadow: 2 }}>
+        <Box sx={{ maxWidth: 1200, mx: 'auto', p: { xs: 2, md: 4 }, background: '#fff', borderRadius: 3, boxShadow: 2 }}>
           <Typography variant="h4" fontWeight={700} align="center" mb={3}>
-            Dashboard – statystyki zamówień
+            Dashboard TEMU – analiza finansowa
           </Typography>
           <Box mb={4} display="flex" flexDirection={{ xs: 'column', sm: 'row' }} alignItems="center" gap={2}>
             <Typography fontWeight={600}>Wybierz konto:</Typography>
@@ -363,79 +505,128 @@ const allDates = orders
                   <option value="this_year">Bieżący rok</option>
                 </select>
               </Box>
-              {/* Kafelki/statystyki korzystają z filteredOrdersByRange */}
-              <Box display="flex" flexWrap="wrap" gap={3} mb={2} justifyContent="center">
-                <Box sx={{ width: 350, minWidth: 350, maxWidth: 350, m: 'auto' }}>
-                  <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
-                    <Box sx={{ mr: 2, bgcolor: '#e3f2fd', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <ShoppingCartIcon sx={{ fontSize: 40, color: '#1976d2' }} />
-                    </Box>
-                    <Box>
-                      <Typography fontWeight={600}>Liczba zamówień</Typography>
-                      <Typography variant="h4" fontWeight={700}>{filteredOrdersByRange.length}</Typography>
-                    </Box>
-                  </Card>
+              
+              {/* NOWE KAFELKI Z LOGIKĄ TEMU - UKŁAD 3 KOLUMNOWY */}
+              <Box display="flex" flexWrap="wrap" gap={3} mb={4} justifyContent="center">
+                {/* KOLUMNA 1 */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {/* Liczba zamówień */}
+                  <Box sx={{ width: 280, minWidth: 280, maxWidth: 280 }}>
+                    <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 280, height: 120, minWidth: 280, maxWidth: 280 }}>
+                      <Box sx={{ mr: 2, bgcolor: '#e3f2fd', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <ShoppingCartIcon sx={{ fontSize: 35, color: '#1976d2' }} />
+                      </Box>
+                      <Box>
+                        <Typography fontWeight={600} fontSize={14}>Liczba zamówień</Typography>
+                        <Typography variant="h4" fontWeight={700}>{temuStats.totalOrders}</Typography>
+                      </Box>
+                    </Card>
+                  </Box>
+                  
+                  {/* Anulowane zamówienia */}
+                  <Box sx={{ width: 280, minWidth: 280, maxWidth: 280 }}>
+                    <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 280, height: 120, minWidth: 280, maxWidth: 280 }}>
+                      <Box sx={{ mr: 2, bgcolor: '#ffebee', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <CancelIcon sx={{ fontSize: 35, color: '#d32f2f' }} />
+                      </Box>
+                      <Box>
+                        <Typography fontWeight={600} fontSize={14}>Anulowane zamówienia</Typography>
+                        <Typography variant="h4" fontWeight={700}>{canceledOrders}</Typography>
+                      </Box>
+                    </Card>
+                  </Box>
                 </Box>
-                <Box sx={{ width: 350, minWidth: 350, maxWidth: 350, m: 'auto' }}>
-                  <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
-                    <Box sx={{ mr: 2, bgcolor: '#e8f5e9', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <AttachMoneyIcon sx={{ fontSize: 40, color: '#388e3c' }} />
-                    </Box>
-                    <Box>
-                      <Typography fontWeight={600}>Obrót (produkty + dostawa)</Typography>
-                      <Typography variant="h4" fontWeight={700}>{totalObrot.toFixed(2)} zł</Typography>
-                    </Box>
-                  </Card>
+                
+                {/* KOLUMNA 2 */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {/* Wpływy sprzedawcy */}
+                  <Box sx={{ width: 280, minWidth: 280, maxWidth: 280 }}>
+                    <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 280, height: 120, minWidth: 280, maxWidth: 280 }}>
+                      <Box sx={{ mr: 2, bgcolor: '#e8f5e9', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <AccountBalanceIcon sx={{ fontSize: 35, color: '#388e3c' }} />
+                      </Box>
+                      <Box>
+                        <Typography fontWeight={600} fontSize={14}>Wpływy sprzedawcy</Typography>
+                        <Typography variant="h4" fontWeight={700} sx={{ fontSize: '1.8rem' }}>{temuStats.sellerRevenueTotal.toFixed(2)} zł</Typography>
+                      </Box>
+                    </Card>
+                  </Box>
+                  
+                  {/* Wpływy sprzedawcy bez kosztów dostawy */}
+                  <Box sx={{ width: 280, minWidth: 280, maxWidth: 280 }}>
+                    <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 280, height: 120, minWidth: 280, maxWidth: 280 }}>
+                      <Box sx={{ mr: 2, bgcolor: '#e8f5e9', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <AttachMoneyIcon sx={{ fontSize: 35, color: '#388e3c' }} />
+                      </Box>
+                      <Box>
+                        <Typography fontWeight={600} fontSize={14}>Wpływy sprzedawcy (bez kosztów dostawy)</Typography>
+                        <Typography variant="h4" fontWeight={700} sx={{ fontSize: '1.8rem' }}>{temuStats.sellerRevenueWithoutShipping.toFixed(2)} zł</Typography>
+                      </Box>
+                    </Card>
+                  </Box>
+                  
+                  {/* Koszty dostawy */}
+                  <Box sx={{ width: 280, minWidth: 280, maxWidth: 280 }}>
+                    <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 280, height: 120, minWidth: 280, maxWidth: 280 }}>
+                      <Box sx={{ mr: 2, bgcolor: '#e8f5e9', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <LocalShippingIcon sx={{ fontSize: 35, color: '#388e3c' }} />
+                      </Box>
+                      <Box>
+                        <Typography fontWeight={600} fontSize={14}>Koszty dostawy</Typography>
+                        <Typography variant="h4" fontWeight={700} sx={{ fontSize: '1.8rem' }}>{temuStats.sellerShippingCost.toFixed(2)} zł</Typography>
+                      </Box>
+                    </Card>
+                  </Box>
                 </Box>
-                <Box sx={{ width: 350, minWidth: 350, maxWidth: 350, m: 'auto' }}>
-                  <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
-                    <Box sx={{ mr: 2, bgcolor: '#e8f5e9', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <AttachMoneyIcon sx={{ fontSize: 40, color: '#388e3c' }} />
-                    </Box>
-                    <Box>
-                      <Typography fontWeight={600}>Suma wartości produktów brutto</Typography>
-                      <Typography variant="h4" fontWeight={700}>{sumProducts.toFixed(2)} zł</Typography>
-                    </Box>
-                  </Card>
-                </Box>
-                <Box sx={{ width: 350, minWidth: 350, maxWidth: 350, m: 'auto' }}>
-                  <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
-                    <Box sx={{ mr: 2, bgcolor: '#fff3e0', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <LocalShippingIcon sx={{ fontSize: 40, color: '#f57c00' }} />
-                    </Box>
-                    <Box>
-                      <Typography fontWeight={600}>Suma kosztów dostawy brutto</Typography>
-                      <Typography variant="h4" fontWeight={700}>{sumDelivery.toFixed(2)} zł</Typography>
-                    </Box>
-                  </Card>
-                </Box>
-                <Box sx={{ width: 350, minWidth: 350, maxWidth: 350, m: 'auto' }}>
-                  <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
-                    <Box sx={{ mr: 2, bgcolor: '#f3e5f5', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <BarChartIcon sx={{ fontSize: 40, color: '#8e24aa' }} />
-                    </Box>
-                    <Box>
-                      <Typography fontWeight={600}>Średnia wartość zamówienia</Typography>
-                      <Typography variant="h4" fontWeight={700}>{avgOrder.toFixed(2)} zł</Typography>
-                    </Box>
-                  </Card>
-                </Box>
-                <Box sx={{ width: 350, minWidth: 350, maxWidth: 350, m: 'auto' }}>
-                  <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 350, height: 130, minWidth: 350, maxWidth: 350, m: 'auto' }}>
-                    <Box sx={{ mr: 2, bgcolor: '#fce4ec', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <PersonIcon sx={{ fontSize: 40, color: '#d81b60' }} />
-                    </Box>
-                    <Box>
-                      <Typography fontWeight={600}>Unikalnych klientów (email)</Typography>
-                      <Typography variant="h4" fontWeight={700}>{uniqueEmails}</Typography>
-                    </Box>
-                  </Card>
+                
+                {/* KOLUMNA 3 */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {/* Klient zapłacił */}
+                  <Box sx={{ width: 280, minWidth: 280, maxWidth: 280 }}>
+                    <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 280, height: 120, minWidth: 280, maxWidth: 280 }}>
+                      <Box sx={{ mr: 2, bgcolor: '#fff3e0', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <AttachMoneyIcon sx={{ fontSize: 35, color: '#f57c00' }} />
+                      </Box>
+                      <Box>
+                        <Typography fontWeight={600} fontSize={14}>Klient zapłacił</Typography>
+                        <Typography variant="h4" fontWeight={700} sx={{ fontSize: '1.8rem' }}>{temuStats.customerPaid.toFixed(2)} zł</Typography>
+                      </Box>
+                    </Card>
+                  </Box>
+                  
+                  {/* Prowizja TEMU */}
+                  <Box sx={{ width: 280, minWidth: 280, maxWidth: 280 }}>
+                    <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 280, height: 120, minWidth: 280, maxWidth: 280 }}>
+                      <Box sx={{ mr: 2, bgcolor: '#fce4ec', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <BarChartIcon sx={{ fontSize: 35, color: '#d81b60' }} />
+                      </Box>
+                      <Box>
+                        <Typography fontWeight={600} fontSize={14}>Prowizja TEMU</Typography>
+                        <Typography variant="h4" fontWeight={700} sx={{ fontSize: '1.8rem' }}>{temuStats.temuCommission.toFixed(2)} zł</Typography>
+                      </Box>
+                    </Card>
+                  </Box>
+                  
+                  {/* Dopłaty TEMU */}
+                  <Box sx={{ width: 280, minWidth: 280, maxWidth: 280 }}>
+                    <Card sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3, borderRadius: 3, boxShadow: 3, width: 280, height: 120, minWidth: 280, maxWidth: 280 }}>
+                      <Box sx={{ mr: 2, bgcolor: '#fff8e1', borderRadius: '50%', p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <AttachMoneyIcon sx={{ fontSize: 35, color: '#f57f17' }} />
+                      </Box>
+                      <Box>
+                        <Typography fontWeight={600} fontSize={14}>Dopłaty TEMU (kupony)</Typography>
+                        <Typography variant="h4" fontWeight={700} sx={{ fontSize: '1.8rem' }}>{temuStats.totalDiscounts.toFixed(2)} zł</Typography>
+                        <Typography fontSize={12} color="text.secondary">({temuStats.ordersWithDiscounts} zamówień)</Typography>
+                      </Box>
+                    </Card>
+                  </Box>
                 </Box>
               </Box>
+              
               {/* WYKRES SEZONOWOŚCI */}
               <Box display="flex" gap={2} alignItems="center" mb={2} mt={4}>
                 <Typography variant="h6" fontWeight={600} align="left" sx={{ flex: 1 }}>
-                  Sezonowość: liczba zamówień
+                  Sezonowość: analiza finansowa
                 </Typography>
                 <select value={aggregation} onChange={e => setAggregation(e.target.value)} style={{ padding: 6, borderRadius: 6, border: '1px solid #ccc' }}>
                   <option value="day">Dziennie</option>
@@ -443,35 +634,126 @@ const allDates = orders
                   <option value="month">Miesięcznie</option>
                 </select>
               </Box>
-              <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 2, mb: 2 }}>
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" fontSize={12} tick={{ fill: '#888' }} />
-                    <YAxis allowDecimals={false} fontSize={12} tick={{ fill: '#888' }} />
-                    <Tooltip formatter={(value: any, name: string) => name === "Obrót" ? `${Number(value).toFixed(2)} zł` : value} />
-                    <Legend />
-                    <Line type="monotone" dataKey="Zamówienia" stroke="#fd6615" strokeWidth={3} dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="Obrót" stroke="#388e3c" strokeWidth={3} dot={{ r: 3 }} yAxisId={1} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Paper>
-              {/* SEKCA ZAMÓWIENIA */}
-              <Typography variant="h6" fontWeight={600} mt={4} mb={1} align="left">Zamówienia</Typography>
-              {/* Tabela zamówień korzysta z 'orders' (wszystkie zamówienia) */}
+              
+              {/* Kontrolki wykresu */}
+              <Box display="flex" gap={3} alignItems="center" mb={2} flexWrap="wrap">
+                <Typography fontWeight={600} fontSize={14}>
+                  Pokaż na wykresie ({Object.values(chartElements).filter(Boolean).length}/4):
+                </Typography>
+                <Box display="flex" gap={2} alignItems="center">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={chartElements.orders}
+                      onChange={(e) => setChartElements(prev => ({ ...prev, orders: e.target.checked }))}
+                      style={{ width: 16, height: 16, accentColor: '#fd6615' }}
+                    />
+                    <span style={{ fontSize: 14, fontWeight: 500, color: '#fd6615' }}>Zamówienia</span>
+                  </label>
+                </Box>
+                <Box display="flex" gap={2} alignItems="center">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={chartElements.revenue}
+                      onChange={(e) => setChartElements(prev => ({ ...prev, revenue: e.target.checked }))}
+                      style={{ width: 16, height: 16, accentColor: '#388e3c' }}
+                    />
+                    <span style={{ fontSize: 14, fontWeight: 500, color: '#388e3c' }}>Wpływy sprzedawcy (suma)</span>
+                  </label>
+                </Box>
+                <Box display="flex" gap={2} alignItems="center">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={chartElements.customer}
+                      onChange={(e) => setChartElements(prev => ({ ...prev, customer: e.target.checked }))}
+                      style={{ width: 16, height: 16, accentColor: '#f57c00' }}
+                    />
+                    <span style={{ fontSize: 14, fontWeight: 500, color: '#f57c00' }}>Klient zapłacił</span>
+                  </label>
+                </Box>
+                <Box display="flex" gap={2} alignItems="center">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={chartElements.commission}
+                      onChange={(e) => setChartElements(prev => ({ ...prev, commission: e.target.checked }))}
+                      style={{ width: 16, height: 16, accentColor: '#d81b60' }}
+                    />
+                    <span style={{ fontSize: 14, fontWeight: 500, color: '#d81b60' }}>Prowizja TEMU</span>
+                  </label>
+                </Box>
+                <Box display="flex" gap={1} ml={2}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setChartElements({ orders: true, revenue: true, customer: true, commission: true })}
+                    sx={{ fontSize: 12, py: 0.5, px: 1.5, borderColor: '#fd6615', color: '#fd6615' }}
+                  >
+                    Pokaż wszystko
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setChartElements({ orders: false, revenue: false, customer: false, commission: false })}
+                    sx={{ fontSize: 12, py: 0.5, px: 1.5, borderColor: '#666', color: '#666' }}
+                  >
+                    Ukryj wszystko
+                  </Button>
+                </Box>
+              </Box>
+                              <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 2, mb: 4 }}>
+                  {Object.values(chartElements).some(Boolean) ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="label" fontSize={12} tick={{ fill: '#888' }} />
+                        <YAxis allowDecimals={false} fontSize={12} tick={{ fill: '#888' }} />
+                        <Tooltip formatter={(value: any, name: string) => {
+                          if (name === "Zamówienia") return value;
+                          return `${Number(value).toFixed(2)} zł`;
+                        }} />
+                        <Legend />
+                        {chartElements.orders && (
+                          <Line type="monotone" dataKey="Zamówienia" stroke="#fd6615" strokeWidth={2} dot={{ r: 3 }} />
+                        )}
+                        {chartElements.revenue && (
+                          <Line type="monotone" dataKey="Wpływy" stroke="#388e3c" strokeWidth={2} dot={{ r: 3 }} />
+                        )}
+                        {chartElements.customer && (
+                          <Line type="monotone" dataKey="Klient" stroke="#f57c00" strokeWidth={2} dot={{ r: 3 }} />
+                        )}
+                        {chartElements.commission && (
+                          <Line type="monotone" dataKey="Prowizja" stroke="#d81b60" strokeWidth={2} dot={{ r: 3 }} />
+                        )}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <Box display="flex" alignItems="center" justifyContent="center" height={300}>
+                      <Typography color="text.secondary" fontSize={16}>
+                        Zaznacz elementy do wyświetlenia na wykresie
+                      </Typography>
+                    </Box>
+                  )}
+                </Paper>
+              
+              {/* SZCZEGÓŁOWA TABELA ZAMÓWIENIA */}
+              <Typography variant="h6" fontWeight={600} mt={4} mb={2} align="left">Szczegółowa analiza zamówień</Typography>
               {orders.length === 0 && (
                 <Typography align="center" color="text.secondary" mb={2}>Brak zamówień w bazie danych.</Typography>
               )}
-              <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, mb: 2, maxHeight: 320, overflowY: 'auto' }}>
+              <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, mb: 4, maxHeight: 400, overflowY: 'auto' }}>
                 <Table size="small" stickyHeader>
                   <TableHead>
                     <TableRow>
                       <TableCell><b>ID</b></TableCell>
-                      <TableCell><b>Nazwa przedmiotu</b></TableCell>
-                      <TableCell align="right"><b>Koszt przedmiotu</b></TableCell>
-                      <TableCell align="right"><b>Koszt wysyłki</b></TableCell>
-                      <TableCell align="right"><b>Wartość całkowita</b></TableCell>
-                      <TableCell align="right"><b>Rozliczenie</b></TableCell>
+                      <TableCell><b>Produkt</b></TableCell>
+                      <TableCell align="right"><b>Wpływy sprzedawcy (suma)</b></TableCell>
+                      <TableCell align="right"><b>Klient zapłacił</b></TableCell>
+                      <TableCell align="right"><b>Prowizja TEMU</b></TableCell>
+                      <TableCell align="right"><b>Kupon TEMU</b></TableCell>
+                      <TableCell align="right"><b>Status</b></TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -484,23 +766,54 @@ const allDates = orders
                         if (!dateB) return -1;
                         return dateA.isBefore(dateB) ? 1 : -1;
                       })
-                      .map((row, i) => (
-                        <TableRow key={i}>
-                          <TableCell>{row["order id"] || row["order_id"]}</TableCell>
-                          <TableCell>{row["product name"]}</TableCell>
-                          <TableCell align="right">{parseFloat(row["base price total"] || 0).toFixed(2)} zł</TableCell>
-                          <TableCell align="right">{parseFloat(row["shipping cost"] || 0).toFixed(2)} zł</TableCell>
-                          <TableCell align="right">{(parseFloat(row["base price total"] || 0) + parseFloat(row["shipping cost"] || 0)).toFixed(2)} zł</TableCell>
-                          <TableCell align="right" sx={{ color: row["order settlement status"] === "Nierozliczone" ? 'error.main' : row["order settlement status"] === "Rozliczone" ? 'success.main' : undefined, fontWeight: 700 }}>
-                            {row["order settlement status"] || ""}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      .map((row, i) => {
+                        const basePriceTotal = parsePriceWithPromotion(row);
+                        const productTaxTotal = parseAmount(row["product tax total"]);
+                        const shippingTaxTotal = parseAmount(row["shipping tax total"]);
+                        const shippingCost = parseAmount(row["shipping cost"]);
+                        
+                        // ROZBICIE WPŁYWÓW SPRZEDAWCY NA KOMPONENTY
+                        const sellerRevenueWithoutShipping = basePriceTotal + productTaxTotal + shippingTaxTotal;
+                        const sellerShippingCost = shippingCost;
+                        const sellerRevenueTotal = sellerRevenueWithoutShipping + sellerShippingCost;
+                        
+                        const retailPriceTotal = parseAmount(row["retail price total"]);
+                        const discountFromTemu = parseAmount(row["discount form TEMU"]);
+                        const customerPaid = retailPriceTotal + productTaxTotal + shippingTaxTotal + shippingCost + discountFromTemu;
+                        const temuCommission = customerPaid - sellerRevenueTotal;
+                        
+                        return (
+                          <TableRow key={i}>
+                            <TableCell>{row["order id"] || row["order_id"]}</TableCell>
+                            <TableCell>{row["product name"]}</TableCell>
+                            <TableCell align="right" sx={{ color: 'success.main', fontWeight: 600 }}>
+                              {sellerRevenueTotal.toFixed(2)} zł
+                            </TableCell>
+                            <TableCell align="right" sx={{ color: 'warning.main', fontWeight: 600 }}>
+                              {customerPaid.toFixed(2)} zł
+                            </TableCell>
+                            <TableCell align="right" sx={{ color: 'error.main', fontWeight: 600 }}>
+                              {temuCommission.toFixed(2)} zł
+                            </TableCell>
+                            <TableCell align="right" sx={{ color: discountFromTemu < 0 ? 'info.main' : 'text.secondary', fontWeight: 600 }}>
+                              {discountFromTemu < 0 ? `${discountFromTemu.toFixed(2)} zł` : '-'}
+                            </TableCell>
+                            <TableCell align="right" sx={{ 
+                              color: row["order status"] === "Shipped" || row["order status"] === "Delivered" ? 'success.main' : 
+                                     row["order status"] === "Unshipped" ? 'error.main' : 'text.secondary', 
+                              fontWeight: 700 
+                            }}>
+                              {row["order status"] || ""}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                   </TableBody>
                 </Table>
               </TableContainer>
-              {/* ZAMÓWIENIA Z TRACKINGIEM */}
-              <Box mt={2} mb={2} display="flex" gap={4} justifyContent="center">
+              
+              {/* STATYSTYKI DODATKOWE */}
+              <Box mt={4} mb={4} display="flex" gap={4} justifyContent="center" flexWrap="wrap">
                 <Paper sx={{ p: 2, borderRadius: 3, minWidth: 220, textAlign: 'center', boxShadow: 2 }}>
                   <Typography fontWeight={600}>Zamówienia z trackingiem</Typography>
                   <Typography color="success.main" fontWeight={700}>Z trackingiem: {withTracking}</Typography>
@@ -511,39 +824,18 @@ const allDates = orders
                   <Typography color="primary.main" fontWeight={700}>Wysłane: {shippedOrders}</Typography>
                   <Typography color="text.secondary">Niewysłane: {unshippedOrders}</Typography>
                 </Paper>
+                <Paper sx={{ p: 2, borderRadius: 3, minWidth: 220, textAlign: 'center', boxShadow: 2 }}>
+                  <Typography fontWeight={600}>Średnie wartości</Typography>
+                  <Typography color="success.main" fontWeight={700}>
+                    Śr. wpływy: {(temuStats.sellerRevenueTotal / temuStats.totalOrders || 0).toFixed(2)} zł
+                  </Typography>
+                  <Typography color="warning.main" fontWeight={700}>
+                    Śr. klient: {(temuStats.customerPaid / temuStats.totalOrders || 0).toFixed(2)} zł
+                  </Typography>
+                </Paper>
               </Box>
-              {/* SPRZEDAŻ WEDŁUG PRODUKTÓW */}
-              <Typography variant="h6" fontWeight={600} mt={4} mb={1} align="left">Sprzedaż według produktów</Typography>
-              <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, mb: 4, maxHeight: 320, overflowY: 'auto' }}>
-                <Table size="small" stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell><b>Produkt</b></TableCell>
-                      <TableCell align="right"><b>Całkowita sprzedaż</b></TableCell>
-                      <TableCell align="right"><b>Ilość sztuk</b></TableCell>
-                      <TableCell align="right"><b>% obrotów</b></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {visibleProducts.map((p, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{p.name}</TableCell>
-                        <TableCell align="right">{p.value.toFixed(2)} zł</TableCell>
-                        <TableCell align="right">{p.count}</TableCell>
-                        <TableCell align="right">{p.percent.toFixed(1)}%</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              {productSales.length > 5 && (
-                <Box textAlign="center" mb={2}>
-                  <button onClick={() => setShowAllProducts(v => !v)} style={{ padding: '6px 18px', borderRadius: 6, border: '1px solid #ccc', background: '#f8fafc', cursor: 'pointer', fontWeight: 600 }}>
-                    {showAllProducts ? 'Pokaż mniej' : 'Pokaż więcej'}
-                  </button>
-                </Box>
-              )}
-              {/* TOP 10 PRODUKTÓW I MIASTA POD WYKRESEM */}
+              
+              {/* TOP 10 PRODUKTÓW I MIASTA */}
               <Typography variant="h6" fontWeight={600} mt={4} mb={1} align="left">TOP 10 najczęściej sprzedawanych produktów</Typography>
               <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, mb: 4 }}>
                 <Table size="small">
@@ -558,25 +850,6 @@ const allDates = orders
                       <TableRow key={i}>
                         <TableCell>{p.name}</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700 }}>{p.count}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <Typography variant="h6" fontWeight={600} mt={4} mb={1} align="left">Najpopularniejsze miasta (TOP 10)</Typography>
-              <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, mb: 4 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell><b>Miasto</b></TableCell>
-                      <TableCell align="right"><b>Zamówień</b></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {topCities.map((c, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{c.city}</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>{c.count}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
