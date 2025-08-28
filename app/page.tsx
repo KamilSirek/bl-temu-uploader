@@ -283,7 +283,7 @@ export default function Home() {
               rows = results.data as any[];
               processFileData(rows, f);
             },
-            error: (error) => {
+            error: (error: any) => {
               console.error('Błąd parsowania CSV:', error);
               setMessage('Błąd parsowania pliku CSV');
             }
